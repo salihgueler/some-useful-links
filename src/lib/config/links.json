@@ -1,0 +1,164 @@
+{
+  "$schema": "./links.schema.json",
+  "defaultSlug": "home",
+  "pages": [
+    {
+      "slug": "home",
+      "meta": {
+        "title": "Some Useful Links",
+        "subtitle": "A tiny corner of the internet filled with good finds.",
+        "url": "https://someusefullinks.com",
+        "avatar": "/avatar.svg"
+      },
+      "appearance": {
+        "primaryColor": "#5C4FB3",
+        "headerColor": "#EFEDFF",
+        "backgroundColor": "#F8F7FC",
+        "accentColor": "#FFB891",
+        "logoColor": "#BFECE6",
+        "buttonStyle": "raised"
+      },
+      "links": [
+        {
+          "id": "tools-and-type",
+          "label": "Design resources",
+          "caption": "Tools, type and color inspiration",
+          "url": "https://www.figma.com/community",
+          "icon": {
+            "emoji": "D",
+            "backgroundColor": "#DDD7FF"
+          },
+          "enabled": true,
+          "order": 0
+        },
+        {
+          "id": "reading-list",
+          "label": "My reading list",
+          "caption": "Articles worth coming back to",
+          "url": "https://readwise.io/read",
+          "icon": {
+            "emoji": "R",
+            "backgroundColor": "#BFECE6"
+          },
+          "enabled": true,
+          "order": 1
+        },
+        {
+          "id": "tiny-wins",
+          "label": "Tiny productivity wins",
+          "caption": "Small ideas that save real time",
+          "url": "https://todoist.com/productivity-methods",
+          "icon": {
+            "emoji": "P",
+            "backgroundColor": "#FFD2B7"
+          },
+          "enabled": true,
+          "order": 2
+        },
+        {
+          "id": "creative-coding",
+          "label": "Creative coding",
+          "caption": "Playful experiments and demos",
+          "url": "https://openprocessing.org",
+          "icon": {
+            "emoji": "C",
+            "backgroundColor": "#FDEDBF"
+          },
+          "enabled": true,
+          "order": 3
+        },
+        {
+          "id": "weekend-rabbit-holes",
+          "label": "Weekend rabbit holes",
+          "caption": "Curious links, no agenda",
+          "url": "https://en.wikipedia.org/wiki/Special:Random",
+          "icon": {
+            "emoji": "W",
+            "backgroundColor": "#D3E7FB"
+          },
+          "enabled": true,
+          "order": 4
+        }
+      ]
+    },
+    {
+      "slug": "reinvent2026",
+      "meta": {
+        "title": "re:Invent 2026 Field Guide",
+        "subtitle": "The sessions, launches and field notes worth keeping close.",
+        "url": "https://someusefullinks.com/reinvent2026",
+        "avatar": "/avatar.svg"
+      },
+      "appearance": {
+        "primaryColor": "#186B61",
+        "headerColor": "#DFF4EC",
+        "backgroundColor": "#F8F7FC",
+        "accentColor": "#FFB891",
+        "logoColor": "#FDEDBF",
+        "buttonStyle": "raised"
+      },
+      "links": [
+        {
+          "id": "event-home",
+          "label": "Event home",
+          "caption": "Dates, venues and official updates",
+          "url": "https://reinvent.awsevents.com",
+          "icon": {
+            "emoji": "A",
+            "backgroundColor": "#FDEDBF"
+          },
+          "enabled": true,
+          "order": 0
+        },
+        {
+          "id": "session-catalog",
+          "label": "Session catalog",
+          "caption": "Build a focused week in Las Vegas",
+          "url": "https://reinvent.awsevents.com/agenda",
+          "icon": {
+            "emoji": "S",
+            "backgroundColor": "#BFECE6"
+          },
+          "enabled": true,
+          "order": 1
+        },
+        {
+          "id": "aws-whats-new",
+          "label": "AWS What's New",
+          "caption": "Track launches as they happen",
+          "url": "https://aws.amazon.com/new/",
+          "icon": {
+            "emoji": "N",
+            "backgroundColor": "#FFD2B7"
+          },
+          "enabled": true,
+          "order": 2
+        },
+        {
+          "id": "builder-center",
+          "label": "Builder Center",
+          "caption": "Technical resources and community",
+          "url": "https://builder.aws.com/",
+          "icon": {
+            "emoji": "B",
+            "backgroundColor": "#DDD7FF"
+          },
+          "enabled": true,
+          "order": 3
+        },
+        {
+          "id": "venue-map",
+          "label": "Campus map",
+          "caption": "Plan the shortest route between venues",
+          "url": "https://maps.google.com/?q=Las+Vegas+Convention+Center",
+          "icon": {
+            "emoji": "M",
+            "backgroundColor": "#D3E7FB"
+          },
+          "enabled": true,
+          "order": 4
+        }
+      ]
+    }
+  ]
+}

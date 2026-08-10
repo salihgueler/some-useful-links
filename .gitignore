@@ -1,0 +1,10 @@
+node_modules
+.next
+.env*.local
+npm-debug.log*
+.DS_Store
+*.tsbuildinfo
+
+# Local mock runtime files are ephemeral; seed-data.json remains source-controlled.
+src/lib/services/local/data/analytics.json
+src/lib/services/local/data/visits.json
