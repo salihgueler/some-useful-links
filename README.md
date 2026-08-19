@@ -1,93 +1,116 @@
 # Some Useful Links
 
-A local-first, multi-page LinkTree-style Next.js application. Every page has
-its own slug, links, appearance, analytics, public share card, and admin tools.
+A multi-owner, LinkTree-style Next.js application. Each signed-in owner keeps
+their own collections; every collection has its own slug, links, appearance,
+analytics and public share card.
+
+Accounts are restricted to Amazon corporate email addresses. Collection pages
+themselves are public: anyone with the link can open one.
 
 ## Setup
 
 ```bash
 npm install
-npm run dev
+npm run dev:api
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The `predev` hook validates
-the entire page collection before Next.js starts.
+Open [http://localhost:3000](http://localhost:3000).
+
+`npm run dev:api` is the entry point for anything involving sign-in. It starts
+the AWS Blocks dev server on port 3000 and Next on 3100, and fronts Next so the
+app and the API share one origin — which is what the session cookie needs.
+
+`npm run dev` starts Next alone. The UI renders, but every API call fails
+because no backend is listening, so use it only for isolated UI work.
 
 Production verification:
 
 ```bash
+npm run lint     # tsc --noEmit
 npm run build
-npm start
 ```
 
-## Pages and URLs
-
-The sample configuration includes:
-
-- `/` for the default `home` page
-- `/reinvent2026` for the re:Invent field guide
-
-Create another page with the plus button in the admin header. Its slug becomes
-the public URL, for example `someusefullinks.com/team-reading`.
-
-Each page has scoped admin routes:
+## Routes
 
 ```text
-/admin/:slug/links
-/admin/:slug/analytics
-/admin/:slug/appearance
-/admin/:slug/share
+/                       landing page (not a collection)
+/:slug                  a public collection page
+/login                  sign in, sign up, confirm email
+/admin                  redirects to your first collection, or /admin/start
+/admin/start            first-run: create a collection or use a starter
+/admin/:slug/links      edit identity, links, visibility and order
+/admin/:slug/analytics  totals, chart, top links, referrers
+/admin/:slug/appearance five colour tokens and the button style
+/admin/:slug/share      preview, download a 1200x630 PNG, copy the URL
 ```
 
-The page selector switches between collections without losing the active admin
-section.
+`/` deliberately serves no collection. Every collection belongs to an owner and
+lives at `/:slug`, so putting one at the root would make whoever claimed a
+reserved slug the face of the site.
 
-## Admin Tools
+Slugs are globally unique across all owners, enforced by a reservation record,
+so claiming one that is taken fails with 409.
 
-Start at
-[http://localhost:3000/admin/home/links](http://localhost:3000/admin/home/links).
+## Accounts
 
-- **Links:** edit page identity, add/remove links, set visibility, and reorder.
-- **Analytics:** page-scoped totals, chart, top links, and referrers.
-- **Appearance:** edit five color tokens and choose raised, flat, or outline
-  link buttons with a live preview.
-- **Share card:** preview, download a 1200x630 PNG, or copy the canonical URL.
+Sign-up is limited to an exact allowlist of domains in
+`aws-blocks/eligibility.ts` — currently `amazon.com`, `amazon.co.uk`,
+`amazon.de` and `amazon.fr`. It is an exact full-domain match on purpose: a
+suffix or pattern check would admit `evil-amazon.com` or `amazon.evil.com`.
 
-Without configuration, admin routes are open for local development. To protect
-them, copy `.env.example` to `.env.local`, set `ADMIN_PASSWORD`, and restart the
-server. The browser then prompts for HTTP Basic Auth.
+The domain check decides who may *attempt* to hold an account. The real control
+is the emailed confirmation code, which proves the address exists. Both are
+required. The domain is re-checked on every authenticated call, so an account
+created out of band, or a domain later removed from the list, loses access
+immediately.
 
-## Edit Configuration Directly
+In local development the confirmation code is printed to the dev server log and
+written to `.bb-data/some-useful-links-auth/last-code.json`; no email provider
+is involved.
 
-Admin edits persist to `src/lib/config/links.json`. Agents can also edit it:
+## Backend
 
-1. Keep the `$schema` reference to `links.schema.json`.
-2. Add or modify a page under `pages`.
-3. Keep page slugs globally unique and link IDs unique within each page.
-4. Run `npm run validate:links`.
-5. Restart the development server.
+Application code reaches data only through the contracts in
+`src/lib/services/interfaces`, resolved by the registry in
+`src/lib/services/index.ts` — the single provider swap point.
 
-Each page requires `slug`, `meta`, `appearance`, and one or more `links`.
-Set a link's `enabled` field to `false` to retain it without rendering it.
+The active provider is AWS Blocks (`aws-blocks/`), with three owner-partitioned
+DistributedTables:
 
-## Local Backend
+| Table | Keys | Notes |
+| --- | --- | --- |
+| pages | `USER#<ownerId>` / `PAGE#<slug>` | plus `SLUG` / `<slug>` reservations |
+| analytics | `USER#<ownerId>` / `A#<slug>#<date>` | daily aggregates |
+| visits | `USER#<ownerId>` / `V#<slug>#<ts>#<id>` | raw events, 90-day TTL |
 
-Application code accesses local data only through interfaces in
-`src/lib/services/interfaces` and the registry in `src/lib/services/index.ts`.
+Reads split into two surfaces, and the split is load-bearing:
 
-- Page configuration: `src/lib/config/links.json`
-- Page-scoped analytics: `src/lib/services/local/data/analytics.json`
-- Raw page events: `src/lib/services/local/data/visits.json`
-- Development seed: `src/lib/services/local/data/seed-data.json`
+- **public** — `getEnabledLinks`, `getLinkById`, and tracking send no session and
+  resolve the slug reservation, so a visitor sees the same page as anyone else.
+- **owner-scoped** — everything else forwards the session cookie so the backend
+  derives the owner from it. A slug held by another owner reads as absent.
 
-Runtime analytics and visit files are gitignored. See
-`src/lib/services/README.md` for contracts and provider migration steps.
+`src/lib/services/local/*` are the original JSON implementations. They are kept
+as a reference for the contracts and are no longer wired up.
+
+`src/lib/config/links.json` is no longer runtime data. It remains as the fixture
+that `npm run validate:links` checks against `links.schema.json`, which is still
+the single source of truth for page shape and is enforced at runtime by
+`validatePageInput()`.
+
+## Environment
+
+```bash
+BLOCKS_RPC_URL   # JSON-RPC endpoint. Required in any deployed environment.
+                 # Local dev defaults to the Blocks dev server on port 3000.
+```
+
+Server-side session checks fail closed without it, so an unset value in
+production means nobody can sign in.
 
 ## Rendering
 
-- `/` and `/:slug`: dynamic SSR with small client islands for tracking/sharing
-- `/admin/:slug/*`: dynamic SSR with focused client editors and charts
+- `/`, `/:slug`, `/admin/*`: dynamic SSR with small client islands
 - Share cards: Canvas API plus QRCode, generated entirely in the browser
-- Font: Manrope through `next/font/google`
-
-No cloud SDK, deployment descriptor, or external API is required.
+- Font: Manrope self-hosted through `next/font/google`
+- Security headers and CSP are set in `next.config.ts`

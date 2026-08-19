@@ -1,3 +1,33 @@
+> ## STATUS: EXECUTED -- kept as the record of intent, not as instructions
+>
+> This migration has been carried out. Read `README.md` and `AGENTS.md` for how
+> the system actually works; the sections below describe what was planned, and
+> parts of it were deliberately not followed:
+>
+> - **AuthCognito, not AuthBasic.** The plan specified AuthBasic. Restricting
+>   accounts to an email-domain allowlist needs verified email, groups and
+>   `signInWith: 'email'`, so AuthCognito was used instead.
+> - **`auth.createApi()` is deliberately NOT exported.** It exposes `signUp`
+>   directly to the browser, which would bypass the domain allowlist. Sign-up
+>   goes through the API namespace, and the login UI is Next pages rather than
+>   the bundled Authenticator widget.
+> - **`/` is a landing page.** The plan kept a platform record for `/`. Serving
+>   any collection at the root makes whoever claimed a reserved slug the face of
+>   the site, so `/` serves no collection at all.
+> - **Analytics combines two sources.** The timeline comes from the aggregates
+>   table (which outlives the 90-day event TTL); top links and referrers come
+>   from visit events, the only place that detail exists. `trends` reports zeros
+>   rather than a fabricated figure.
+> - **`resetFromSeed()` clears** the caller's aggregates instead of restoring
+>   sample data: there is no per-owner seed in the cloud path.
+> - **Per-owner seeding is idempotent by derivation**, not by a flag -- the
+>   starter slug is derived from the owner's `userSub`, so a repeat call resolves
+>   to the same reservation.
+>
+> Still outstanding from the plan: `npm run seed` for system-owned demo content,
+> the two-user verification as an automated test rather than a manual one, and
+> `npm run deploy` against a real AWS account.
+
 # Migrating to Cloud - AWS Blocks Backend Prompt
 
 > Purpose: Replace local JSON mock services with AWS Blocks while making
