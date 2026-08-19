@@ -1,4 +1,5 @@
 import { ApiError, ApiNamespace, AuthCognito, Scope } from "@aws-blocks/blocks";
+import { analyticsOperations, createAnalyticsTable, type AnalyticsPoint } from "./analytics-table";
 import { pageOperations } from "./page-operations";
 import { createPagesTable } from "./pages-table";
 import {
@@ -18,6 +19,10 @@ const scope = new Scope("some-useful-links");
 /** Owner-partitioned page storage; see pages-table.ts for the key design. */
 const pagesTable = createPagesTable(scope);
 const pages = pageOperations(pagesTable);
+
+/** Daily aggregates, owner-partitioned; see analytics-table.ts. */
+const analyticsTable = createAnalyticsTable(scope);
+const analytics = analyticsOperations(analyticsTable);
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
@@ -181,6 +186,24 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
   async deletePage(slug: string) {
     const { user } = await requireEligible(context);
     return { deleted: await pages.deletePage(user.userSub, slug) };
+  },
+
+  // ---- Owner-scoped analytics ---------------------------------------------
+
+  async queryAnalytics(slug: string, startDate?: string, endDate?: string) {
+    const { user } = await requireEligible(context);
+    return { points: await analytics.range(user.userSub, slug, startDate, endDate) };
+  },
+
+  async upsertDailySnapshot(slug: string, point: AnalyticsPoint) {
+    const { user } = await requireEligible(context);
+    await analytics.upsertDaily(user.userSub, slug, point);
+    return { date: point.date };
+  },
+
+  async resetAnalytics(slug: string) {
+    const { user } = await requireEligible(context);
+    return { deleted: await analytics.reset(user.userSub, slug) };
   },
 
   // ---- Public --------------------------------------------------------------
