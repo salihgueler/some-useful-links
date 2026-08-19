@@ -62,6 +62,11 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   // Do not advertise the framework and version to scanners.
   poweredByHeader: false,
+  // Development only: the Blocks dev server fronts the app on :3000 and proxies
+  // to Next on :3100. Next 16 rejects cross-origin dev asset requests with 403,
+  // which breaks hydration behind that proxy. Has no effect on a production
+  // build, where CloudFront serves one origin.
+  allowedDevOrigins: ["localhost", "127.0.0.1"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
