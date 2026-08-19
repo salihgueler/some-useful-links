@@ -12,7 +12,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const page = await linkStore.getPage(slug);
-  if (!page) return {};
+  if (!page) {
+    // This request will render not-found.tsx; give it a matching title and keep
+    // missing collections out of search indexes.
+    return { title: "Page not found", robots: { index: false, follow: false } };
+  }
   return {
     title: page.meta.title,
     description: page.meta.subtitle,
