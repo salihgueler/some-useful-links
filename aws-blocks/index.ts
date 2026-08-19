@@ -91,6 +91,15 @@ function eligibleOrThrow(email: string): string {
   }
 }
 
+/**
+ * JSON-RPC serialises an omitted positional parameter as null, so every
+ * optional string param has to be normalised before it reaches a key
+ * condition -- "A#slug#null" silently matches no rows rather than failing.
+ */
+function optionalString(value: string | null | undefined): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
 /** Keeps only the origin: a full referrer URL can carry tokens in its query. */
 function referrerOrigin(raw: string | null | undefined): string | undefined {
   if (typeof raw !== "string" || raw.length === 0) return undefined;
@@ -205,9 +214,20 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
 
   // ---- Owner-scoped analytics ---------------------------------------------
 
-  async queryAnalytics(slug: string, startDate?: string, endDate?: string) {
+  async queryAnalytics(
+    slug: string,
+    startDate?: string | null,
+    endDate?: string | null,
+  ) {
     const { user } = await requireEligible(context);
-    return { points: await analytics.range(user.userSub, slug, startDate, endDate) };
+    return {
+      points: await analytics.range(
+        user.userSub,
+        slug,
+        optionalString(startDate),
+        optionalString(endDate),
+      ),
+    };
   },
 
   async upsertDailySnapshot(slug: string, point: AnalyticsPoint) {
@@ -278,9 +298,18 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
 
   // ---- Owner-scoped visit metrics -----------------------------------------
 
-  async visitMetrics(slug: string, startDate?: string, endDate?: string) {
+  async visitMetrics(
+    slug: string,
+    startDate?: string | null,
+    endDate?: string | null,
+  ) {
     const { user } = await requireEligible(context);
-    return await visits.metrics(user.userSub, slug, startDate, endDate);
+    return await visits.metrics(
+      user.userSub,
+      slug,
+      optionalString(startDate),
+      optionalString(endDate),
+    );
   },
 
   async clearVisits(slug: string) {
