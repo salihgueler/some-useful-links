@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { PublicError, errorResponse } from "@/lib/api/errors";
 import { clientKey, rateLimit } from "@/lib/api/rate-limit";
 import type { VisitEventType } from "@/lib/services";
-import { linkStore, visitTracker } from "@/lib/services";
+import { visitTracker } from "@/lib/services";
 
 /**
  * Public, unauthenticated endpoint: public pages must be able to record views
@@ -68,16 +68,14 @@ export async function POST(request: NextRequest) {
       throw new PublicError("Invalid event type");
     }
     const pageSlug = body.pageSlug;
-    if (typeof pageSlug !== "string" || !(await linkStore.getPage(pageSlug))) {
+    if (typeof pageSlug !== "string" || pageSlug.length === 0) {
       throw new PublicError("Unknown page slug");
     }
     const linkId = typeof body.linkId === "string" ? body.linkId : undefined;
-    if (linkId && !(await linkStore.getLinkById(pageSlug, linkId))) {
-      throw new PublicError("Unknown link ID");
-    }
-    if (type === "link-click" && !linkId) {
-      throw new PublicError("linkId is required for link-click events");
-    }
+    // Slug existence, link existence and the link-click/linkId rule are all
+    // enforced by the backend, which resolves the owner from the slug
+    // reservation. Validating here would need an owner-scoped read that an
+    // anonymous visitor cannot make.
 
     // Build the event explicitly: never spread caller input, so unknown
     // properties cannot be persisted and the timestamp stays server-owned.

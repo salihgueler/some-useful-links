@@ -258,6 +258,20 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
         name: "MissingLinkId",
       });
     }
+    if (link) {
+      // Verify the link exists on the page. This has to happen here: the public
+      // route cannot check it without an owner-scoped read, and without it any
+      // caller could invent link IDs and pollute an owner's per-link metrics.
+      const raw = await pages.getPublicPage(slug);
+      const exists = raw
+        ? (JSON.parse(raw) as { links?: Array<{ id?: string }> }).links?.some(
+            (candidate) => candidate.id === link,
+          )
+        : false;
+      if (!exists) {
+        throw new ApiError("Unknown link ID", 400, { name: "UnknownLink" });
+      }
+    }
     const { id } = await visits.track(ownerId, slug, { type, linkId: link, referrer: ref });
     return { ok: true, eventId: id };
   },
