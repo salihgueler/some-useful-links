@@ -138,6 +138,7 @@ export function LinksEditor({ initialPage }: { initialPage: PageConfiguration })
               <span>{page.meta.url}</span>
               <a
                 href={page.slug === "home" ? "/" : `/${page.slug}`}
+                rel="noreferrer"
                 target="_blank"
                 aria-label="Open public page"
               >

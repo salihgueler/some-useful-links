@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { errorResponse } from "@/lib/api/errors";
+import { PublicError, errorResponse } from "@/lib/api/errors";
 import { requireOwnerApi } from "@/lib/auth/require-owner";
 import { analyticsStore } from "@/lib/services";
 
@@ -19,9 +19,18 @@ export async function GET(request: NextRequest) {
     let endDate = params.get("endDate") ?? undefined;
 
     if (range && range !== "all") {
+      // Number.parseInt("abc") is NaN, which propagated into subtractDays and
+      // produced an Invalid Date and a silently empty report.
+      const days = Number(range);
+      if (!Number.isInteger(days) || days < 1 || days > 3650) {
+        throw new PublicError("range must be a whole number of days, or \"all\"");
+      }
       const fullReport = await analyticsStore.query({ pageSlug });
-      endDate = fullReport.range.endDate;
-      startDate = subtractDays(endDate, Number.parseInt(range, 10));
+      // An owner with no aggregate rows yet has an empty range. Feeding "" to
+      // subtractDays built an Invalid Date whose toISOString() threw, so
+      // choosing a range in the dashboard returned 500 for most owners.
+      endDate = fullReport.range.endDate || new Date().toISOString().slice(0, 10);
+      startDate = subtractDays(endDate, days);
     }
 
     const report = await analyticsStore.query({
