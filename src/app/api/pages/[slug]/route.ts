@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { errorResponse } from "@/lib/api/errors";
+import { requireOwnerApi } from "@/lib/auth/require-owner";
 import { validatePageInput } from "@/lib/config/links.validate";
 import { linkStore } from "@/lib/services";
 
@@ -7,6 +8,11 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  try {
+    await requireOwnerApi();
+  } catch (error) {
+    return errorResponse(error, "Not authorized");
+  }
   const { slug } = await params;
   const page = await linkStore.getPage(slug);
   if (!page) {
@@ -20,6 +26,7 @@ export async function PATCH(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
+    await requireOwnerApi();
     const { slug } = await params;
     const page = validatePageInput(await request.json());
     return NextResponse.json(await linkStore.updatePage(slug, page));
@@ -33,6 +40,7 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
+    await requireOwnerApi();
     const { slug } = await params;
     const deleted = await linkStore.deletePage(slug);
     return NextResponse.json({ deleted }, { status: deleted ? 200 : 404 });

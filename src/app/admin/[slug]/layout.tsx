@@ -4,6 +4,7 @@ import { AdminPageSwitcher } from "@/components/layout/AdminPageSwitcher";
 import { LogoMark } from "@/components/layout/LogoMark";
 import { NavTabs } from "@/components/layout/NavTabs";
 import { linkStore } from "@/lib/services";
+import { requireOwnerPage } from "@/lib/auth/require-owner";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function PageAdminLayout({
   children: React.ReactNode;
   params: Promise<{ slug: string }>;
 }>) {
+  await requireOwnerPage();
   const { slug } = await params;
   const [page, pages] = await Promise.all([
     linkStore.getPage(slug),

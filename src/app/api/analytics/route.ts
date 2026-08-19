@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { errorResponse } from "@/lib/api/errors";
+import { requireOwnerApi } from "@/lib/auth/require-owner";
 import { analyticsStore } from "@/lib/services";
 
 function subtractDays(date: string, days: number) {
@@ -9,6 +11,7 @@ function subtractDays(date: string, days: number) {
 
 export async function GET(request: NextRequest) {
   try {
+    await requireOwnerApi();
     const params = request.nextUrl.searchParams;
     const pageSlug = params.get("pageSlug") ?? "home";
     const range = params.get("range");
@@ -32,9 +35,6 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(report);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Analytics failed" },
-      { status: 400 },
-    );
+    return errorResponse(error, "Analytics failed");
   }
 }

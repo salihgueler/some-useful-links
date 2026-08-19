@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { requireOwnerPage } from "@/lib/auth/require-owner";
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  await requireOwnerPage();
   redirect("/admin/home/links");
 }
