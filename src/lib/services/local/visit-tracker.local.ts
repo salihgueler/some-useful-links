@@ -17,6 +17,9 @@ const visitsPath = join(
 // Serializing writes prevents overlapping local API requests from losing data.
 let pendingWrite = Promise.resolve();
 
+/** Retention cap for the local mock; the cloud store should use a TTL instead. */
+const MAX_STORED_EVENTS = 50_000;
+
 export class LocalVisitTracker implements VisitTracker {
   private async readEvents(): Promise<VisitEvent[]> {
     try {
@@ -35,17 +38,27 @@ export class LocalVisitTracker implements VisitTracker {
       throw new Error("linkId is required for link-click events");
     }
 
+    // Built field by field rather than spreading input, so a caller cannot
+    // persist unknown properties or choose its own timestamp.
     const event: VisitEvent = {
-      ...input,
       id: randomUUID(),
-      timestamp: input.timestamp ?? new Date().toISOString(),
+      type: input.type,
+      pageSlug: input.pageSlug,
+      linkId: input.linkId,
+      referrer: input.referrer,
+      timestamp: new Date().toISOString(),
     };
 
     pendingWrite = pendingWrite.then(async () => {
       const events = await this.readEvents();
       events.push(event);
+      // Bound the file: an append-only mock is otherwise unbounded growth.
+      const retained =
+        events.length > MAX_STORED_EVENTS
+          ? events.slice(events.length - MAX_STORED_EVENTS)
+          : events;
       await mkdir(dirname(visitsPath), { recursive: true });
-      await writeFile(visitsPath, `${JSON.stringify(events, null, 2)}\n`, "utf8");
+      await writeFile(visitsPath, `${JSON.stringify(retained, null, 2)}\n`, "utf8");
     });
     await pendingWrite;
     return event;

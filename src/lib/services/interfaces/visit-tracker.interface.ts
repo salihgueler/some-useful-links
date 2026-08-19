@@ -4,9 +4,13 @@ export interface TrackVisitInput {
   type: VisitEventType;
   pageSlug: string;
   linkId?: string;
-  timestamp?: string;
+  /**
+   * Referring origin only, never a full URL: query strings can carry tokens.
+   * There is deliberately no timestamp field -- the store owns it, so a caller
+   * cannot backdate or forward-date an event. The user agent is not recorded:
+   * no metric consumes it, and it is a fingerprinting surface.
+   */
   referrer?: string;
-  userAgent?: string;
 }
 
 export interface VisitEvent extends TrackVisitInput {

@@ -1,33 +1,96 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { TrackVisitInput } from "@/lib/services";
+import { PublicError, errorResponse } from "@/lib/api/errors";
+import { clientKey, rateLimit } from "@/lib/api/rate-limit";
+import type { VisitEventType } from "@/lib/services";
 import { linkStore, visitTracker } from "@/lib/services";
+
+/**
+ * Public, unauthenticated endpoint: public pages must be able to record views
+ * and clicks without a session. Everything here exists to bound what an
+ * anonymous caller can do.
+ */
+
+const EVENT_TYPES: readonly VisitEventType[] = ["page-view", "link-click", "share"];
+const MAX_BODY_BYTES = 1_024;
+const MAX_EVENTS_PER_MINUTE = 30;
+const WINDOW_MS = 60_000;
+
+/** Keep only the origin: full referrer URLs can carry tokens in query strings. */
+function referrerOrigin(raw: string | null): string | undefined {
+  if (!raw) return undefined;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return undefined;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const input = (await request.json()) as TrackVisitInput;
-    if (!["page-view", "link-click", "share"].includes(input.type)) {
-      return NextResponse.json({ error: "Invalid event type" }, { status: 400 });
-    }
-    if (!input.pageSlug || !(await linkStore.getPage(input.pageSlug))) {
-      return NextResponse.json({ error: "Unknown page slug" }, { status: 400 });
-    }
-    if (
-      input.linkId &&
-      !(await linkStore.getLinkById(input.pageSlug, input.linkId))
-    ) {
-      return NextResponse.json({ error: "Unknown link ID" }, { status: 400 });
+    const limit = rateLimit(
+      `track:${clientKey(request.headers)}`,
+      MAX_EVENTS_PER_MINUTE,
+      WINDOW_MS,
+    );
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+      );
     }
 
+    if (!request.headers.get("content-type")?.includes("application/json")) {
+      throw new PublicError("Content-Type must be application/json", 415);
+    }
+
+    const declared = Number(request.headers.get("content-length") ?? "0");
+    if (declared > MAX_BODY_BYTES) {
+      throw new PublicError("Payload too large", 413);
+    }
+    const raw = await request.text();
+    if (raw.length > MAX_BODY_BYTES) {
+      throw new PublicError("Payload too large", 413);
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      throw new PublicError("Body must be valid JSON");
+    }
+    if (typeof parsed !== "object" || parsed === null) {
+      throw new PublicError("Body must be a JSON object");
+    }
+    const body = parsed as Record<string, unknown>;
+
+    const type = body.type;
+    if (typeof type !== "string" || !EVENT_TYPES.includes(type as VisitEventType)) {
+      throw new PublicError("Invalid event type");
+    }
+    const pageSlug = body.pageSlug;
+    if (typeof pageSlug !== "string" || !(await linkStore.getPage(pageSlug))) {
+      throw new PublicError("Unknown page slug");
+    }
+    const linkId = typeof body.linkId === "string" ? body.linkId : undefined;
+    if (linkId && !(await linkStore.getLinkById(pageSlug, linkId))) {
+      throw new PublicError("Unknown link ID");
+    }
+    if (type === "link-click" && !linkId) {
+      throw new PublicError("linkId is required for link-click events");
+    }
+
+    // Build the event explicitly: never spread caller input, so unknown
+    // properties cannot be persisted and the timestamp stays server-owned.
     const event = await visitTracker.track({
-      ...input,
-      referrer: input.referrer || request.headers.get("referer") || undefined,
-      userAgent: request.headers.get("user-agent") || undefined,
+      type: type as VisitEventType,
+      pageSlug,
+      linkId,
+      referrer:
+        referrerOrigin(typeof body.referrer === "string" ? body.referrer : null) ??
+        referrerOrigin(request.headers.get("referer")),
     });
     return NextResponse.json({ ok: true, eventId: event.id }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Tracking failed" },
-      { status: 400 },
-    );
+    return errorResponse(error, "Tracking failed");
   }
 }

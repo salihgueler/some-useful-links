@@ -14,5 +14,6 @@ export type {
 export type { LinkStoreSnapshot } from "./interfaces/link-store.interface";
 export type {
   TrackVisitInput,
+  VisitEventType,
   VisitMetrics,
 } from "./interfaces/visit-tracker.interface";
