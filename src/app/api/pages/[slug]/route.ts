@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { PageConfiguration } from "@/lib/config/links.types";
+import { errorResponse } from "@/lib/api/errors";
+import { validatePageInput } from "@/lib/config/links.validate";
 import { linkStore } from "@/lib/services";
 
 export async function GET(
@@ -20,13 +21,10 @@ export async function PATCH(
 ) {
   try {
     const { slug } = await params;
-    const page = (await request.json()) as PageConfiguration;
+    const page = validatePageInput(await request.json());
     return NextResponse.json(await linkStore.updatePage(slug, page));
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Update failed" },
-      { status: 400 },
-    );
+    return errorResponse(error, "Update failed");
   }
 }
 
@@ -39,9 +37,6 @@ export async function DELETE(
     const deleted = await linkStore.deletePage(slug);
     return NextResponse.json({ deleted }, { status: deleted ? 200 : 404 });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Delete failed" },
-      { status: 400 },
-    );
+    return errorResponse(error, "Delete failed");
   }
 }
