@@ -2,27 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { rpc } from "@/lib/auth/rpc";
 
 type Mode = "signIn" | "signUp" | "confirm";
-
-/**
- * Calls the Blocks JSON-RPC endpoint on the same origin. The Blocks server
- * fronts Next in development and CloudFront routes the path in production, so
- * a relative URL is correct in both and the session cookie is first-party.
- */
-async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-  const response = await fetch("/aws-blocks/api", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", method: `api.${method}`, params, id: 1 }),
-  });
-  const payload = (await response.json()) as {
-    result?: T;
-    error?: { message?: string };
-  };
-  if (payload.error) throw new Error(payload.error.message ?? "Request failed");
-  return payload.result as T;
-}
 
 export function SignInForm({ domains }: { domains: readonly string[] }) {
   const router = useRouter();
