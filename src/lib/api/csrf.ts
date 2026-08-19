@@ -33,6 +33,15 @@ function expectedOrigins(request: NextRequest): Set<string> {
   const origins = new Set<string>([request.nextUrl.origin]);
   const forwarded = forwardedOrigin(request);
   if (forwarded) origins.add(forwarded);
+
+  // Behind CloudFront the SSR Lambda may see the public host only in `host`,
+  // while nextUrl.origin reflects the internal invoke URL. Accept it too, since
+  // an attacker able to forge Host already controls the request path entirely.
+  const host = request.headers.get("host");
+  if (host) {
+    const proto = request.headers.get("x-forwarded-proto") ?? "https";
+    origins.add(`${proto}://${host}`);
+  }
   return origins;
 }
 

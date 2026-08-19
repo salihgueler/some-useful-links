@@ -22,11 +22,29 @@ export class RpcError extends Error {
   }
 }
 
+/**
+ * JSON-RPC endpoint of the Blocks API.
+ *
+ * Resolution order:
+ *  1. BLOCKS_RPC_URL  -- explicit override, if you ever need one.
+ *  2. BLOCKS_API_URL  -- injected automatically into the SSR Lambda by the
+ *     Hosting construct. This is the production path; nothing to configure.
+ *  3. the local Blocks dev server, which fronts Next on port 3000.
+ *
+ * Hosting exposes no `environment` option, so an env var WE invent cannot be
+ * set in a deployed stack -- only the one Hosting injects itself is available.
+ */
 function endpoint(): string {
-  const configured = process.env.BLOCKS_RPC_URL;
-  if (configured) return configured;
+  const explicit = process.env.BLOCKS_RPC_URL;
+  if (explicit) return explicit;
+
+  const injected = process.env.BLOCKS_API_URL;
+  if (injected) return injected;
+
   if (process.env.NODE_ENV === "production") {
-    throw new Error("BLOCKS_RPC_URL must be set in production");
+    throw new Error(
+      "Neither BLOCKS_API_URL nor BLOCKS_RPC_URL is set; the API is unreachable",
+    );
   }
   return "http://127.0.0.1:3000/aws-blocks/api";
 }

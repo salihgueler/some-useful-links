@@ -39,5 +39,11 @@ if (!sandboxMode) {
       memorySize: 1024,
       timeout: 30,
     },
+    // The real Content-Security-Policy is issued PER REQUEST by src/proxy.ts,
+    // because it carries a nonce and CloudFront cannot generate one. If
+    // CloudFront also sent its own policy the browser would enforce BOTH, and
+    // the intersection would block Next's scripts. This edge policy is
+    // deliberately permissive so it never narrows the middleware's.
+    contentSecurityPolicy: "default-src * data: blob: 'unsafe-inline' 'unsafe-eval'",
   });
 }
