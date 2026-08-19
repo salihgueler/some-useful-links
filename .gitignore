@@ -8,3 +8,10 @@ npm-debug.log*
 # Local mock runtime files are ephemeral; seed-data.json remains source-controlled.
 src/lib/services/local/data/analytics.json
 src/lib/services/local/data/visits.json
+
+# AWS Blocks: generated clients, local mock data, and CDK output.
+/.bb-data/
+/.blocks-sandbox/
+cdk.out/
+aws-blocks/client.js
+aws-blocks/blocks.spec.json
