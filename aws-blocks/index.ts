@@ -1,4 +1,6 @@
 import { ApiError, ApiNamespace, AuthCognito, Scope } from "@aws-blocks/blocks";
+import { pageOperations } from "./page-operations";
+import { createPagesTable } from "./pages-table";
 import {
   ALLOWED_EMAIL_DOMAINS,
   NotEligibleError,
@@ -12,6 +14,10 @@ import {
 // Hover over Scope below to see the docstring with complete Building Block index
 
 const scope = new Scope("some-useful-links");
+
+/** Owner-partitioned page storage; see pages-table.ts for the key design. */
+const pagesTable = createPagesTable(scope);
+const pages = pageOperations(pagesTable);
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
@@ -145,5 +151,42 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
   async me() {
     const { user, email } = await requireEligible(context);
     return { email, userSub: user.userSub };
+  },
+
+  // ---- Owner-scoped pages -------------------------------------------------
+  // ownerId always comes from the verified session, never from the caller.
+
+  async listPages() {
+    const { user } = await requireEligible(context);
+    return { pages: await pages.listPages(user.userSub) };
+  },
+
+  async getPage(slug: string) {
+    const { user } = await requireEligible(context);
+    return { page: (await pages.getPage(user.userSub, slug)) ?? null };
+  },
+
+  async createPage(slug: string, page: string, isDefault = false) {
+    const { user } = await requireEligible(context);
+    await pages.createPage(user.userSub, slug, page, isDefault);
+    return { slug };
+  },
+
+  async updatePage(slug: string, page: string) {
+    const { user } = await requireEligible(context);
+    await pages.updatePage(user.userSub, slug, page);
+    return { slug };
+  },
+
+  async deletePage(slug: string) {
+    const { user } = await requireEligible(context);
+    return { deleted: await pages.deletePage(user.userSub, slug) };
+  },
+
+  // ---- Public --------------------------------------------------------------
+
+  /** No auth: public link pages are readable by anyone. */
+  async getPublicPage(slug: string) {
+    return { page: (await pages.getPublicPage(slug)) ?? null };
   },
 }));
