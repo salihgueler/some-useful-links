@@ -2273,3 +2273,41 @@ a {
     opacity: 0.5;
   }
 }
+
+/* Sign-in surface, rendered inside .status-card */
+
+.auth-form {
+  display: grid;
+  width: 100%;
+  gap: 16px;
+  margin-top: 24px;
+  text-align: left;
+}
+
+.auth-form .field > input {
+  width: 100%;
+}
+
+.auth-form .status-action {
+  justify-content: center;
+  width: 100%;
+}
+
+.auth-switch {
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.auth-switch:hover {
+  text-decoration: underline;
+}
+
+.auth-switch:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
