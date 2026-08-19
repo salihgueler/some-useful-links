@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { rpc } from "@/lib/auth/rpc";
 
 /**
  * Posts to the existing /api/pages route rather than calling Blocks directly,
@@ -27,6 +28,26 @@ export function CreateFirstCollection() {
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "Could not create it");
       router.replace(`/admin/${slug}/links`);
+      router.refresh();
+    } catch (cause) {
+      setBusy(false);
+      setError(cause instanceof Error ? cause.message : "Something went wrong");
+    }
+  };
+
+  /**
+   * Idempotent: the backend no-ops when this owner already has a collection and
+   * derives the slug from the owner, so pressing this twice cannot create two.
+   */
+  const useStarter = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { slug: created } = await rpc<{ created: boolean; slug: string }>(
+        "seedStarterCollection",
+        [],
+      );
+      router.replace(`/admin/${created}/links`);
       router.refresh();
     } catch (cause) {
       setBusy(false);
@@ -67,6 +88,14 @@ export function CreateFirstCollection() {
       ) : null}
       <button className="status-action" disabled={busy} type="submit">
         {busy ? "Creating..." : "Create collection"}
+      </button>
+      <button
+        className="auth-switch"
+        disabled={busy}
+        onClick={useStarter}
+        type="button"
+      >
+        Or start from a template
       </button>
     </form>
   );

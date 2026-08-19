@@ -1,6 +1,7 @@
 import { ApiError, ApiNamespace, AuthCognito, Scope } from "@aws-blocks/blocks";
 import { analyticsOperations, createAnalyticsTable, type AnalyticsPoint } from "./analytics-table";
 import { pageOperations } from "./page-operations";
+import { starterPage, starterSlug } from "./starter-page";
 import { createVisitsTable, visitOperations, type VisitEventType } from "./visits-table";
 import { createPagesTable } from "./pages-table";
 import {
@@ -239,6 +240,40 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
   async resetAnalytics(slug: string) {
     const { user } = await requireEligible(context);
     return { deleted: await analytics.reset(user.userSub, slug) };
+  },
+
+  /**
+   * Gives a brand-new owner a starter collection. Idempotent in two ways:
+   * it no-ops when the owner already has any collection, and the slug is
+   * derived from the owner rather than random, so a repeat call resolves to
+   * the same reservation instead of creating a second collection.
+   */
+  async seedStarterCollection() {
+    const { user } = await requireEligible(context);
+    const existing = await pages.listPages(user.userSub);
+    if (existing.length > 0) {
+      return { created: false, slug: existing[0].slug, reason: "already-seeded" };
+    }
+
+    const slug = starterSlug(user.userSub);
+    const holder = await pages.resolveSlugOwner(slug);
+    if (holder && holder !== user.userSub) {
+      // Derived slugs collide only on a UUID prefix clash. Rather than silently
+      // widening the derivation, report it: the owner can pick their own slug.
+      throw new ApiError(
+        "Could not reserve a starter address; please choose one",
+        409,
+        { name: "StarterSlugTaken" },
+      );
+    }
+
+    await pages.createPage(
+      user.userSub,
+      slug,
+      JSON.stringify(starterPage(slug)),
+      true,
+    );
+    return { created: true, slug };
   },
 
   // ---- Public --------------------------------------------------------------
