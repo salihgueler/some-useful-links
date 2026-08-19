@@ -44,7 +44,7 @@ export function AppearanceEditor({
   const save = () => {
     setMessage("");
     startTransition(async () => {
-      const response = await fetch(`/api/pages/${page.slug}`, {
+      const response = await fetch(`/app-api/pages/${page.slug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(page),

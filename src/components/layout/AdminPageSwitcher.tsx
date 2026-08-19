@@ -40,7 +40,7 @@ export function AdminPageSwitcher({
     event.preventDefault();
     setSaving(true);
     setError("");
-    const response = await fetch("/api/pages", {
+    const response = await fetch("/app-api/pages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, slug }),

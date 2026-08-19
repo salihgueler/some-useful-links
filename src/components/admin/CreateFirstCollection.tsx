@@ -20,7 +20,7 @@ export function CreateFirstCollection() {
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/pages", {
+      const response = await fetch("/app-api/pages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, title }),

@@ -38,7 +38,7 @@ export function ShareCardPanel({
     await navigator.clipboard.writeText(page.meta.url);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
-    void fetch("/api/track", {
+    void fetch("/app-api/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "share", pageSlug: page.slug }),

@@ -35,7 +35,7 @@ export function AnalyticsDashboard({
   const changeRange = (range: string) => {
     startTransition(async () => {
       const response = await fetch(
-        `/api/analytics?range=${range}&pageSlug=${encodeURIComponent(pageSlug)}`,
+        `/app-api/analytics?range=${range}&pageSlug=${encodeURIComponent(pageSlug)}`,
       );
       if (!response.ok) return;
       setData((await response.json()) as AnalyticsSummary);
