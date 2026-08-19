@@ -1,6 +1,7 @@
 import { ApiError, ApiNamespace, AuthCognito, Scope } from "@aws-blocks/blocks";
 import { analyticsOperations, createAnalyticsTable, type AnalyticsPoint } from "./analytics-table";
 import { pageOperations } from "./page-operations";
+import { createVisitsTable, visitOperations, type VisitEventType } from "./visits-table";
 import { createPagesTable } from "./pages-table";
 import {
   ALLOWED_EMAIL_DOMAINS,
@@ -23,6 +24,10 @@ const pages = pageOperations(pagesTable);
 /** Daily aggregates, owner-partitioned; see analytics-table.ts. */
 const analyticsTable = createAnalyticsTable(scope);
 const analytics = analyticsOperations(analyticsTable);
+
+/** Raw visit events with TTL retention; see visits-table.ts. */
+const visitsTable = createVisitsTable(scope);
+const visits = visitOperations(visitsTable);
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
@@ -83,6 +88,16 @@ function eligibleOrThrow(email: string): string {
   } catch (error) {
     if (error instanceof NotEligibleError) throw notEligible();
     throw error;
+  }
+}
+
+/** Keeps only the origin: a full referrer URL can carry tokens in its query. */
+function referrerOrigin(raw: string | null | undefined): string | undefined {
+  if (typeof raw !== "string" || raw.length === 0) return undefined;
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return undefined;
   }
 }
 
@@ -211,5 +226,51 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
   /** No auth: public link pages are readable by anyone. */
   async getPublicPage(slug: string) {
     return { page: (await pages.getPublicPage(slug)) ?? null };
+  },
+
+  /**
+   * No auth: public pages record their own views and clicks.
+   *
+   * The owner is resolved from the slug reservation, so an event for an
+   * unclaimed slug is rejected instead of being filed under nobody. The caller
+   * supplies neither an owner nor a timestamp.
+   */
+  async track(
+    slug: string,
+    type: VisitEventType,
+    linkId?: string | null,
+    referrer?: string | null,
+  ) {
+    // JSON-RPC positional params carry an absent value as null, and the record
+    // schema accepts undefined but not null. Normalise before validating.
+    const link = typeof linkId === "string" && linkId.length > 0 ? linkId : undefined;
+    // Reduce to the origin HERE, not only in the Next route handler: this
+    // endpoint is publicly callable, so a control that lives upstream of it is
+    // bypassable. Full referrer URLs can carry tokens in the query string.
+    const ref = referrerOrigin(referrer);
+
+    const ownerId = await pages.resolveSlugOwner(slug);
+    if (!ownerId) {
+      throw new ApiError("Unknown page slug", 400, { name: "UnknownPage" });
+    }
+    if (type === "link-click" && !link) {
+      throw new ApiError("linkId is required for link-click events", 400, {
+        name: "MissingLinkId",
+      });
+    }
+    const { id } = await visits.track(ownerId, slug, { type, linkId: link, referrer: ref });
+    return { ok: true, eventId: id };
+  },
+
+  // ---- Owner-scoped visit metrics -----------------------------------------
+
+  async visitMetrics(slug: string, startDate?: string, endDate?: string) {
+    const { user } = await requireEligible(context);
+    return await visits.metrics(user.userSub, slug, startDate, endDate);
+  },
+
+  async clearVisits(slug: string) {
+    const { user } = await requireEligible(context);
+    return { cleared: await visits.clear(user.userSub, slug) };
   },
 }));
