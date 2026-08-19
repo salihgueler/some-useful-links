@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { errorResponse } from "@/lib/api/errors";
+import { assertJsonBody, assertSameOrigin } from "@/lib/api/csrf";
 import { requireOwnerApi } from "@/lib/auth/require-owner";
 import { validatePageInput } from "@/lib/config/links.validate";
 import { linkStore } from "@/lib/services";
@@ -26,6 +27,8 @@ export async function PATCH(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
+    assertSameOrigin(request);
+    assertJsonBody(request);
     await requireOwnerApi();
     const { slug } = await params;
     const page = validatePageInput(await request.json());
@@ -36,10 +39,11 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   try {
+    assertSameOrigin(request);
     await requireOwnerApi();
     const { slug } = await params;
     const deleted = await linkStore.deletePage(slug);

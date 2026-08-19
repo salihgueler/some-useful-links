@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { errorResponse } from "@/lib/api/errors";
+import { assertJsonBody, assertSameOrigin } from "@/lib/api/csrf";
 import { requireOwnerApi } from "@/lib/auth/require-owner";
 import type { PageConfiguration } from "@/lib/config/links.types";
 import { validatePageInput } from "@/lib/config/links.validate";
@@ -18,6 +19,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    assertSameOrigin(request);
+    assertJsonBody(request);
     await requireOwnerApi();
     const input = (await request.json()) as { slug?: string; title?: string };
     const slug = input.slug?.trim().toLowerCase();

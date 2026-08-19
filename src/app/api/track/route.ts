@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { PublicError, errorResponse } from "@/lib/api/errors";
 import { clientKey, rateLimit } from "@/lib/api/rate-limit";
+import { assertJsonBody, assertSameOrigin } from "@/lib/api/csrf";
 import type { VisitEventType } from "@/lib/services";
 import { visitTracker } from "@/lib/services";
 
@@ -39,9 +40,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!request.headers.get("content-type")?.includes("application/json")) {
-      throw new PublicError("Content-Type must be application/json", 415);
-    }
+    assertSameOrigin(request);
+    assertJsonBody(request);
 
     const declared = Number(request.headers.get("content-length") ?? "0");
     if (declared > MAX_BODY_BYTES) {
