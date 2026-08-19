@@ -42,9 +42,6 @@ function visibleLinks(page: PageConfiguration): LinkStoreSnapshot {
   return { ...page, links };
 }
 
-/** The slug served at "/" for anonymous visitors. */
-const ROOT_SLUG = "home";
-
 export class BlocksLinkStore implements LinkStore {
   private async ownedPages(): Promise<
     Array<{ slug: string; isDefault: boolean; page: string }>
@@ -93,13 +90,22 @@ export class BlocksLinkStore implements LinkStore {
     return parsePage(record.page);
   }
 
-  /** PUBLIC: no session is sent, so anyone resolves the same page. */
+  /**
+   * PUBLIC: no session is sent, so anyone resolves the same page.
+   *
+   * A slug is required. There is no root collection: every collection belongs
+   * to an owner and lives at /:slug, and "/" is a landing page. Silently
+   * falling back to a reserved slug here is what made "/" depend on whoever
+   * claimed it.
+   */
   async getEnabledLinks(slug?: string): Promise<LinkStoreSnapshot> {
-    const target = slug ?? ROOT_SLUG;
+    if (!slug) {
+      throw new Error("A page slug is required: there is no root collection");
+    }
     const { page } = await serverRpc<{ page: string | null }>("getPublicPage", [
-      target,
+      slug,
     ]);
-    if (!page) throw new Error(`Page "${target}" was not found`);
+    if (!page) throw new Error(`Page "${slug}" was not found`);
     return visibleLinks(parsePage(page));
   }
 
