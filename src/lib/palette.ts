@@ -16,20 +16,21 @@ import type { PageAppearance } from "@/lib/config/links.types";
 /** Sampling size. Small on purpose: palette needs distribution, not detail. */
 const SAMPLE_EDGE = 72;
 
-async function loadBitmap(file: File): Promise<HTMLImageElement> {
-  const url = URL.createObjectURL(file);
+/**
+ * Decodes a chosen file into pixels.
+ *
+ * Uses createImageBitmap rather than an <img> with a blob: URL. The page's CSP
+ * is `img-src 'self' data:`, and a blob: URL satisfies neither -- loading one
+ * into an <img> is blocked by the policy, which surfaced as "that file could not
+ * be read as an image" for every file. createImageBitmap decodes the Blob
+ * directly and never performs an img-src fetch, so it needs no CSP change.
+ */
+async function decodeImage(file: File): Promise<ImageBitmap> {
   try {
-    const image = new Image();
-    image.decoding = "sync";
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error("That file could not be read as an image"));
-      image.src = url;
-    });
-    return image;
-  } finally {
-    // Revoked after decode; the element keeps its own copy of the pixels.
-    URL.revokeObjectURL(url);
+    // from-image so a photo carrying EXIF rotation is not sampled sideways.
+    return await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    throw new Error("That file could not be decoded as an image");
   }
 }
 
@@ -42,7 +43,7 @@ function context2d(width: number, height: number) {
   return { canvas, context };
 }
 
-function samplePixels(image: HTMLImageElement): Rgb[] {
+function samplePixels(image: ImageBitmap): Rgb[] {
   const scale = Math.min(SAMPLE_EDGE / image.width, SAMPLE_EDGE / image.height, 1);
   const width = Math.max(1, Math.round(image.width * scale));
   const height = Math.max(1, Math.round(image.height * scale));
@@ -125,8 +126,9 @@ export function saturation(hex: string): number {
 
 /** Dominant colours of an image, most common first. */
 export async function extractPalette(file: File, count = 6): Promise<string[]> {
-  const image = await loadBitmap(file);
+  const image = await decodeImage(file);
   const pixels = samplePixels(image);
+  image.close();
   if (pixels.length === 0) {
     throw new Error("That image had no opaque pixels to read");
   }
@@ -189,11 +191,12 @@ export async function readLogoDataUrl(
   maxWidth = 320,
   maxHeight = 128,
 ): Promise<string> {
-  const image = await loadBitmap(file);
+  const image = await decodeImage(file);
   const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
   const width = Math.max(1, Math.round(image.width * scale));
   const height = Math.max(1, Math.round(image.height * scale));
   const { canvas, context } = context2d(width, height);
   context.drawImage(image, 0, 0, width, height);
+  image.close();
   return canvas.toDataURL("image/png");
 }

@@ -60,8 +60,13 @@ export function PublicLinkPage({ page }: { page: PageConfiguration }) {
             )}
             <h1>{meta.title}</h1>
             <p>{meta.subtitle}</p>
-            {badgeText ? <span className="curated-label">{badgeText}</span> : null}
           </header>
+          {/* Outside the header on purpose: as an absolutely-positioned element
+              straddling the band's edge, its legibility depended on a magic
+              offset between the band and the header. In normal flow below the
+              band it always sits on the body surface, so its colour is judged
+              against one known background. */}
+          {badgeText ? <p className="curated-label">{badgeText}</p> : null}
           <LinkList pageSlug={page.slug} links={page.links} />
         </ShareExperience>
         <Footer />

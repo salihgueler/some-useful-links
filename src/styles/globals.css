@@ -149,14 +149,7 @@ a {
   caret-color: var(--page-primary, var(--primary));
   scrollbar-color: var(--page-primary, var(--primary))
     var(--page-background, var(--background));
-  background:
-    linear-gradient(
-      to bottom,
-      var(--page-header, #efedff) 0,
-      var(--page-header, #efedff) 280px,
-      var(--page-background, var(--background)) 280px,
-      var(--page-background, var(--background)) 100%
-    );
+  background: var(--page-background, var(--background));
 }
 
 .visitor-page ::selection {
@@ -179,11 +172,12 @@ a {
 }
 
 .visitor-shell {
+  --visitor-shell-top: 54px;
   position: relative;
   width: min(100%, 390px);
   min-height: 932px;
   margin: 0 auto;
-  padding: 54px 24px 30px;
+  padding: var(--visitor-shell-top) 24px 30px;
 }
 
 .share-icon-button {
@@ -220,6 +214,40 @@ a {
   text-align: center;
 }
 
+/*
+ * Header band.
+ *
+ * Previously the band was a gradient stop at a hard 280px on .visitor-page,
+ * which is a magic number the content can outgrow: a title wrapping to a third
+ * line pushed text past the stop and onto the body surface. On a theme with a
+ * dark header over a light body (the AWS preset) that put near-white text on
+ * white -- 1.7:1.
+ *
+ * Painting it from the header instead ties the band's height to the thing it is
+ * meant to cover. The 100vw inset keeps it full-bleed inside the 390px shell,
+ * and the shell's own top padding is included so the band reaches the viewport
+ * edge. Children are lifted above it rather than the band being pushed behind
+ * the parent with a negative z-index, which would hide it under .visitor-page's
+ * own background.
+ */
+.visitor-header::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(-1 * var(--visitor-shell-top, 54px));
+  width: 100vw;
+  /* Exactly the header, plus the shell's top padding so it reaches the viewport
+     edge. No subtractive offset, so there is no value for content to outgrow. */
+  height: calc(100% + var(--visitor-shell-top, 54px));
+  background: var(--page-header, #efedff);
+  transform: translateX(-50%);
+}
+
+.visitor-header > * {
+  position: relative;
+  z-index: 1;
+}
+
 .visitor-header h1 {
   margin: 25px 0 5px;
   color: var(--page-header-ink, var(--ink));
@@ -239,11 +267,9 @@ a {
 }
 
 .curated-label {
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  z-index: 1;
+  display: block;
   width: max-content;
+  margin: 20px auto 0;
   padding: 7px 16px;
   border-radius: 999px;
   background: var(--page-badge, #ffd9c3);
@@ -252,17 +278,13 @@ a {
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 18px;
-  transform: translateX(-50%);
 }
 
 .link-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  /* Clears the badge, which is absolutely positioned over the header's bottom
-     edge. Generous rather than just non-overlapping, so the badge reads as
-     attached to the header and separate from the list. */
-  margin-top: 34px;
+  margin-top: 20px;
 }
 
 .link-row {
