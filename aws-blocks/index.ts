@@ -172,6 +172,29 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
     return auth.confirmSignIn(session, { code }, context);
   },
 
+  /**
+   * Starts a password reset; Cognito mails a code.
+   *
+   * The block deliberately never reveals whether the account exists, so that
+   * this endpoint cannot be used to enumerate addresses. This wrapper preserves
+   * that: the only thing it will refuse is an INELIGIBLE DOMAIN, which is a
+   * statement about the address itself and discloses nothing about accounts.
+   */
+  async resetPassword(email: string) {
+    const result = await auth.resetPassword(eligibleOrThrow(email));
+    return { isPasswordReset: result.isPasswordReset, nextStep: result.nextStep };
+  },
+
+  /**
+   * Completes the reset with the mailed code and a new password. Cognito
+   * enforces the pool's password policy here, so a weak new password is
+   * rejected at the source rather than by a duplicate rule of our own.
+   */
+  async confirmResetPassword(email: string, code: string, newPassword: string) {
+    await auth.confirmResetPassword(eligibleOrThrow(email), code, newPassword);
+    return { ok: true };
+  },
+
   async signOut() {
     await auth.signOut(context, { global: true });
     return { ok: true };
