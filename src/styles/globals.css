@@ -742,6 +742,13 @@ a {
   font-size: 12px;
 }
 
+.form-notice {
+  margin: 12px 0 0;
+  color: var(--muted-strong, #4a5568);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .slug-input,
 .readonly-url {
   display: flex;
