@@ -1,28 +1,75 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
   GripVertical,
+  Pencil,
   Plus,
   Save,
   Trash2,
+  X,
 } from "lucide-react";
 import type {
   LinkEntry,
   PageConfiguration,
 } from "@/lib/config/links.types";
+import { Modal } from "@/components/ui/Modal";
 
 function orderedLinks(links: LinkEntry[]) {
   return links.map((link, index) => ({ ...link, order: index }));
 }
 
+/** Mirrors the server's slug rule so the field cannot offer an invalid address. */
+function toSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48);
+}
+
 export function LinksEditor({ initialPage }: { initialPage: PageConfiguration }) {
+  const router = useRouter();
   const [page, setPage] = useState(() => structuredClone(initialPage));
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [renaming, setRenaming] = useState(false);
+  const [nextSlug, setNextSlug] = useState("");
+  const [renameError, setRenameError] = useState("");
+  const [renamingBusy, setRenamingBusy] = useState(false);
+
+  /**
+   * Renames through its own endpoint rather than the content save, because it
+   * changes the page's identity and releases the old address.
+   */
+  const rename = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setRenamingBusy(true);
+    setRenameError("");
+    const response = await fetch(`/app-api/pages/${page.slug}/rename`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: nextSlug }),
+    });
+    const result = (await response.json().catch(() => ({}))) as {
+      slug?: string;
+      error?: string;
+    };
+    setRenamingBusy(false);
+    if (!response.ok || !result.slug) {
+      setRenameError(result.error ?? "The address could not be changed");
+      return;
+    }
+    setRenaming(false);
+    // The admin route is keyed by slug, so the old URL no longer resolves.
+    router.replace(`/admin/${result.slug}/links`);
+    router.refresh();
+  };
 
   const updateLink = (index: number, patch: Partial<LinkEntry>) => {
     setPage((current) => ({
@@ -136,6 +183,19 @@ export function LinksEditor({ initialPage }: { initialPage: PageConfiguration })
             <span>Public URL</span>
             <div className="readonly-url">
               <span>{page.meta.url}</span>
+              <button
+                type="button"
+                className="icon-command"
+                aria-label="Change public address"
+                title="Change public address"
+                onClick={() => {
+                  setNextSlug(page.slug);
+                  setRenameError("");
+                  setRenaming(true);
+                }}
+              >
+                <Pencil size={15} />
+              </button>
               <a
                 href={page.slug === "home" ? "/" : `/${page.slug}`}
                 rel="noreferrer"
@@ -162,6 +222,50 @@ export function LinksEditor({ initialPage }: { initialPage: PageConfiguration })
           </label>
         </div>
       </section>
+
+      <Modal open={renaming} titleId="rename-page-title" onClose={() => setRenaming(false)}>
+        <form className="create-page-form" onSubmit={rename}>
+          <header>
+            <div>
+              <p className="eyebrow">Public address</p>
+              <h2 id="rename-page-title">Change this collection&rsquo;s address</h2>
+            </div>
+            <button
+              type="button"
+              className="icon-command"
+              aria-label="Close"
+              onClick={() => setRenaming(false)}
+            >
+              <X size={19} />
+            </button>
+          </header>
+          <p className="status-description">
+            Analytics history moves with the collection. The old address{" "}
+            <strong>/{page.slug}</strong> will stop working and return a 404, so any
+            shared link or QR code pointing at it breaks, and the address becomes
+            available for someone else to claim.
+          </p>
+          <label className="field">
+            <span>New address</span>
+            <div className="slug-input">
+              <span>someusefullinks.com/</span>
+              <input
+                required
+                pattern="[a-z0-9-]{2,48}"
+                value={nextSlug}
+                onChange={(event) => setNextSlug(toSlug(event.target.value))}
+              />
+            </div>
+          </label>
+          {renameError ? <p className="form-error">{renameError}</p> : null}
+          <button
+            className="primary-action form-submit"
+            disabled={renamingBusy || nextSlug === page.slug}
+          >
+            {renamingBusy ? "Changing..." : "Change address"}
+          </button>
+        </form>
+      </Modal>
 
       <section className="links-editor-section">
         <div className="links-editor-heading">

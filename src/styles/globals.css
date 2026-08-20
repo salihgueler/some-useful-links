@@ -742,6 +742,11 @@ a {
   font-size: 12px;
 }
 
+.create-page-form .status-description {
+  margin: 0 0 20px;
+  text-align: left;
+}
+
 .form-notice {
   margin: 12px 0 0;
   color: var(--muted-strong, #4a5568);
