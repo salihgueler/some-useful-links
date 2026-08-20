@@ -259,7 +259,10 @@ a {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 0;
+  /* Clears the badge, which is absolutely positioned over the header's bottom
+     edge. Generous rather than just non-overlapping, so the badge reads as
+     attached to the header and separate from the list. */
+  margin-top: 34px;
 }
 
 .link-row {
@@ -1247,15 +1250,16 @@ a {
 .appearance-phone-header > strong {
   display: block;
   margin-top: 12px;
+  color: var(--preview-header-ink, var(--ink));
   font-size: 14px;
   line-height: 19px;
 }
 
 .appearance-phone-header > p {
   margin: 3px auto 0;
-  color: var(--muted);
-  font-size: 8px;
-  line-height: 12px;
+  color: var(--preview-header-ink-soft, var(--muted));
+  font-size: 10px;
+  line-height: 14px;
 }
 
 .appearance-phone-links {
@@ -1271,11 +1275,12 @@ a {
   align-items: center;
   gap: 9px;
   padding: 0 9px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--preview-border, var(--border));
   border-radius: 12px;
-  background: white;
+  background: var(--preview-surface, white);
+  color: var(--preview-ink, var(--ink));
   box-shadow: 0 4px 9px rgba(42, 39, 56, 0.06);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 600;
 }
 
@@ -1305,10 +1310,10 @@ a {
   margin: 20px auto 0;
   padding: 5px 9px;
   border-radius: 999px;
-  background: var(--preview-accent);
-  font-size: 7px;
+  background: var(--preview-badge, var(--preview-accent));
+  color: var(--preview-badge-ink, var(--ink));
+  font-size: 10px;
   font-weight: 700;
-  text-transform: uppercase;
 }
 
 .admin-share-workspace {
@@ -2487,4 +2492,90 @@ a {
 .admin-signout:disabled {
   cursor: default;
   opacity: 0.6;
+}
+
+/* ---------- Theme presets, palette extraction and logo ---------- */
+.theme-presets {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-top: 4px;
+}
+
+.theme-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    box-shadow 160ms ease-out,
+    transform 160ms ease-out;
+}
+
+.theme-preset:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+/* Selection is carried by the ring AND the label weight, never colour alone. */
+.theme-preset[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.theme-preset strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.theme-preset[aria-pressed="true"] strong::after {
+  content: " · in use";
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.theme-preset small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.theme-swatches {
+  display: flex;
+  gap: 4px;
+}
+
+.theme-swatches i {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.09);
+}
+
+.image-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.palette-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-logo {
+  display: block;
+  max-width: 120px;
+  height: 40px;
+  margin: 0 auto;
+  object-fit: contain;
 }
