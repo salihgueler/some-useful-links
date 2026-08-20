@@ -382,17 +382,23 @@ a {
 
 .visitor-footer p {
   margin: 0;
-  color: #777282;
-  font-size: 11px;
+  color: #6a6575;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 16px;
+  line-height: 20px;
 }
 
-.footer-sparkle {
-  display: block;
-  margin-top: 25px;
-  color: var(--page-accent, #f88960);
-  font-size: 15px;
+/* Underlined rather than colour-only, so the link is not signalled by hue alone. */
+.visitor-footer a {
+  color: var(--page-primary, var(--primary));
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.visitor-footer a:hover {
+  text-decoration-thickness: 2px;
 }
 
 .share-icon-button:focus-visible,
