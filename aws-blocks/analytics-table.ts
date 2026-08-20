@@ -87,6 +87,26 @@ export function analyticsOperations(table: AnalyticsTable) {
       return points;
     },
 
+    /**
+     * Moves every row for one page onto a new slug.
+     *
+     * The slug is part of the sort key, so this cannot be an in-place update:
+     * each row is rewritten under the new key and the old one deleted. Bounded
+     * by one row per day of recorded history.
+     */
+    async rename(ownerId: string, fromSlug: string, toSlug: string) {
+      if (fromSlug === toSlug) return 0;
+      const points = await this.range(ownerId, fromSlug);
+      for (const point of points) {
+        await this.upsertDaily(ownerId, toSlug, point);
+        await table.delete({
+          pk: ownerPartition(ownerId),
+          sk: rowKey(fromSlug, point.date),
+        });
+      }
+      return points.length;
+    },
+
     /** Deletes every analytics row this owner holds for one page. */
     async reset(ownerId: string, pageSlug: string) {
       let deleted = 0;

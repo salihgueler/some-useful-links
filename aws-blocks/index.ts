@@ -231,6 +231,23 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
     return { slug };
   },
 
+  /**
+   * Renames a collection and takes its history with it.
+   *
+   * The page move happens first, so a slug that is already taken fails before
+   * any history is touched. Analytics aggregates and visit events both carry
+   * the slug in their sort key, so they are rewritten rather than updated in
+   * place -- without this the history would be orphaned: invisible under the
+   * new slug and unreachable under the old one.
+   */
+  async renamePage(slug: string, nextSlug: string, page: string) {
+    const { user } = await requireEligible(context);
+    await pages.renamePage(user.userSub, slug, nextSlug, page);
+    const movedAggregates = await analytics.rename(user.userSub, slug, nextSlug);
+    const movedEvents = await visits.rename(user.userSub, slug, nextSlug);
+    return { slug: nextSlug, movedAggregates, movedEvents };
+  },
+
   async deletePage(slug: string) {
     const { user } = await requireEligible(context);
     return { deleted: await pages.deletePage(user.userSub, slug) };

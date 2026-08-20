@@ -49,6 +49,12 @@ export interface VisitMetrics {
 const eventKey = (pageSlug: string, timestamp: string, id: string) =>
   `V#${pageSlug}#${timestamp}#${id}`;
 
+/**
+ * The event ID is the final segment of the sort key. Slugs are `[a-z0-9-]` and
+ * ISO timestamps contain no `#`, so the last separator is unambiguous.
+ */
+const eventIdFromKey = (sk: string) => sk.slice(sk.lastIndexOf("#") + 1);
+
 export function createVisitsTable(scope: Scope) {
   return new DistributedTable(scope, "visits", {
     schema: visitSchema,
@@ -127,6 +133,27 @@ export function visitOperations(table: VisitsTable) {
           .map(([referrer, visits]) => ({ referrer, visits }))
           .sort((a, b) => b.visits - a.visits),
       };
+    },
+
+    /**
+     * Moves one page's events onto a new slug.
+     *
+     * The slug sits in the sort key, so each row is rewritten and the old one
+     * deleted. expiresAt is carried over unchanged, so a rename does not extend
+     * an event's retention window.
+     */
+    async rename(ownerId: string, fromSlug: string, toSlug: string) {
+      if (fromSlug === toSlug) return 0;
+      const rows = await read(ownerId, fromSlug, "0000", "9999");
+      for (const row of rows) {
+        await table.put({
+          ...row,
+          sk: eventKey(toSlug, row.timestamp, eventIdFromKey(row.sk)),
+          pageSlug: toSlug,
+        });
+        await table.delete({ pk: row.pk, sk: row.sk });
+      }
+      return rows.length;
     },
 
     /** Clears one page's events for this owner only. */

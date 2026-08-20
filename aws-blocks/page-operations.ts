@@ -122,6 +122,56 @@ export function pageOperations(table: PagesTable) {
       });
     },
 
+    /**
+     * Moves a collection to a new slug.
+     *
+     * Order is what makes this safe. The new reservation is taken FIRST with
+     * ifNotExists, so a slug another owner already holds fails before anything
+     * has moved. The old record and old reservation are removed only after the
+     * new record exists, and a failure in between releases the reservation this
+     * call just took rather than stranding it.
+     *
+     * The old slug is deliberately RELEASED rather than kept as a redirect, so
+     * links and QR codes pointing at it stop resolving and it becomes available
+     * to anyone. Callers must say so in the UI.
+     */
+    async renamePage(
+      ownerId: string,
+      slug: string,
+      nextSlug: string,
+      page: string,
+    ) {
+      if (slug === nextSlug) return;
+      const existing = await readOwnedPage(ownerId, slug);
+      if (!existing) throw notFound(slug);
+
+      await reserveSlug(nextSlug, ownerId);
+      try {
+        await table.put({
+          pk: ownerPartition(ownerId),
+          sk: pageKey(nextSlug),
+          slug: nextSlug,
+          page,
+          // Preserved: renaming must not silently demote an owner's default
+          // collection, which would change where /admin lands them.
+          isDefault: existing.isDefault ?? false,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        const reservation = await table.get({ pk: SLUG_PARTITION, sk: nextSlug });
+        if (reservation?.slugOwner === ownerId) {
+          await table.delete({ pk: SLUG_PARTITION, sk: nextSlug });
+        }
+        throw error;
+      }
+
+      await table.delete({ pk: ownerPartition(ownerId), sk: pageKey(slug) });
+      const previous = await table.get({ pk: SLUG_PARTITION, sk: slug });
+      if (previous?.slugOwner === ownerId) {
+        await table.delete({ pk: SLUG_PARTITION, sk: slug });
+      }
+    },
+
     async deletePage(ownerId: string, slug: string) {
       const existing = await readOwnedPage(ownerId, slug);
       if (!existing) throw notFound(slug);
