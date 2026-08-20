@@ -20,6 +20,10 @@ export interface LinkMeta {
   subtitle: string;
   url: string;
   avatar?: string;
+  /** Small label under the header. Empty or absent hides it entirely. */
+  badge?: string;
+  /** Conference logo as a raster data URL; replaces the built-in logo mark. */
+  logo?: string;
 }
 
 export interface PageAppearance {
@@ -28,6 +32,17 @@ export interface PageAppearance {
   backgroundColor: string;
   accentColor: string;
   logoColor: string;
+  /**
+   * Foreground for headings and body on the public page.
+   *
+   * Optional so that page records written before themes existed stay valid:
+   * every read falls back to the default ink. Without this a dark preset paints
+   * near-black text on a near-black surface -- the Kiro palette measured
+   * 1.14:1 against its own background before this field existed.
+   */
+  inkColor?: string;
+  /** Background of the badge under the header. */
+  badgeColor?: string;
   buttonStyle: ButtonStyle;
 }
 

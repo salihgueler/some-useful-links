@@ -47,6 +47,44 @@ function assertSafeUrl(raw: string, allowed: readonly string[], label: string) {
 }
 
 /**
+ * Conference logos are stored inline on the page record as data URLs, so the
+ * payload has to be checked rather than trusted.
+ *
+ * SVG is deliberately excluded. It is a document format that can carry script
+ * and external references; the raster types cannot. The CSP already permits
+ * `img-src data:`, so an accepted value renders without loosening it.
+ */
+const ALLOWED_LOGO_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+] as const;
+
+/** Matches the schema's maxLength, kept here so the reason is stated once. */
+const MAX_LOGO_CHARS = 262144;
+
+function assertSafeLogo(raw: string) {
+  if (raw.length > MAX_LOGO_CHARS) {
+    throw new PageValidationError(
+      "The logo is too large; use an image under about 190 KB",
+    );
+  }
+  const match = /^data:([a-z/+-]+);base64,([A-Za-z0-9+/]+={0,2})$/.exec(raw);
+  if (!match) {
+    throw new PageValidationError(
+      "The logo must be a base64 image data URL",
+    );
+  }
+  const [, mediaType] = match;
+  if (!ALLOWED_LOGO_TYPES.includes(mediaType as (typeof ALLOWED_LOGO_TYPES)[number])) {
+    throw new PageValidationError(
+      `The logo must be one of ${ALLOWED_LOGO_TYPES.join(", ")} (received "${mediaType}")`,
+    );
+  }
+}
+
+/**
  * Validates an untrusted page payload against the JSON Schema and the URL
  * protocol allowlist. Throws PageValidationError on rejection.
  */
@@ -66,6 +104,7 @@ export function validatePageInput(input: unknown): PageConfiguration {
   // `unknown` argument through the guard. The shape is schema-checked above.
   const page = input as PageConfiguration;
   assertSafeUrl(page.meta.url, ALLOWED_PAGE_PROTOCOLS, "meta.url");
+  if (page.meta.logo) assertSafeLogo(page.meta.logo);
   for (const link of page.links) {
     assertSafeUrl(link.url, ALLOWED_LINK_PROTOCOLS, `links.${link.id}.url`);
   }
