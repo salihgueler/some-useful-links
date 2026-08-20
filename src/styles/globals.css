@@ -382,7 +382,7 @@ a {
   border-radius: 17px;
   background: var(--page-primary, var(--primary));
   color: #fff;
-  box-shadow: 0 10px 22px rgba(54, 43, 128, 0.2);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.20);
   cursor: pointer;
   font-size: 15px;
   font-weight: 600;
@@ -393,12 +393,12 @@ a {
 }
 
 .share-primary:hover {
-  box-shadow: 0 13px 27px rgba(54, 43, 128, 0.27);
+  box-shadow: 0 13px 27px rgba(0, 0, 0, 0.26);
   transform: translateY(-2px);
 }
 
 .share-primary:active {
-  box-shadow: 0 7px 16px rgba(54, 43, 128, 0.18);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, 0.18);
   transform: translateY(0);
 }
 
@@ -883,7 +883,7 @@ a {
 .primary-command {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 7px 16px rgba(54, 43, 128, 0.16);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, 0.16);
 }
 
 .secondary-command {
@@ -2328,7 +2328,7 @@ a {
   border-radius: 17px;
   background: var(--primary);
   color: var(--surface);
-  box-shadow: 0 10px 22px rgba(54, 43, 128, 0.2);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.20);
   cursor: pointer;
   font-size: 15px;
   font-weight: 600;
@@ -2340,7 +2340,7 @@ a {
 
 .status-action:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 26px rgba(54, 43, 128, 0.26);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.25);
 }
 
 .status-action:active {
@@ -2600,4 +2600,20 @@ a {
   height: 40px;
   margin: 0 auto;
   object-fit: contain;
+}
+
+/* Badge text and its colour, grouped so the wording is found where the
+   badge is being designed rather than on the Links page. */
+.badge-controls {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .badge-controls {
+    grid-template-columns: 1fr;
+  }
 }

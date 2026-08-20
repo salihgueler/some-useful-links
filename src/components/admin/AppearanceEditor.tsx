@@ -28,7 +28,6 @@ const colorFields: Array<{
   { key: "backgroundColor", label: "Background", fallback: "#F8F7FC" },
   { key: "accentColor", label: "Accent", fallback: "#FFB891" },
   { key: "logoColor", label: "Logo", fallback: "#BFECE6" },
-  { key: "badgeColor", label: "Badge", fallback: DEFAULT_BADGE_COLOR },
 ];
 
 export function AppearanceEditor({
@@ -278,6 +277,44 @@ export function AppearanceEditor({
             ) : null}
           </div>
           {imageError ? <p className="form-error">{imageError}</p> : null}
+
+          <div className="section-copy">
+            <h2>Badge</h2>
+            <p>
+              The small label under the header. Its wording and its colour live
+              together here.
+            </p>
+          </div>
+          <div className="badge-controls">
+            <label className="field">
+              <span>Text</span>
+              <input
+                value={meta.badge ?? DEFAULT_BADGE}
+                maxLength={28}
+                placeholder="Leave empty to hide the badge"
+                onChange={(event) =>
+                  setPage((current) => ({
+                    ...current,
+                    meta: { ...current.meta, badge: event.target.value },
+                  }))
+                }
+              />
+              <small>Leave it empty to hide the badge entirely.</small>
+            </label>
+            <label className="color-control">
+              <input
+                type="color"
+                value={appearance.badgeColor ?? DEFAULT_BADGE_COLOR}
+                onChange={(event) =>
+                  setAppearance("badgeColor", event.target.value.toUpperCase())
+                }
+              />
+              <span>
+                <strong>Background</strong>
+                <small>{appearance.badgeColor ?? DEFAULT_BADGE_COLOR}</small>
+              </span>
+            </label>
+          </div>
 
           <div className="section-copy">
             <h2>Colour palette</h2>

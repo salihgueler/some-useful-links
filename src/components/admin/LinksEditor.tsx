@@ -207,20 +207,6 @@ export function LinksEditor({ initialPage }: { initialPage: PageConfiguration })
             </div>
           </label>
           <label className="field field-wide">
-            <span>Badge</span>
-            <input
-              value={page.meta.badge ?? "Curated with care"}
-              maxLength={28}
-              onChange={(event) =>
-                setPage((current) => ({
-                  ...current,
-                  meta: { ...current.meta, badge: event.target.value },
-                }))
-              }
-            />
-            <small>Shown under the subtitle. Leave it empty to hide it.</small>
-          </label>
-          <label className="field field-wide">
             <span>Subtitle</span>
             <input
               value={page.meta.subtitle}

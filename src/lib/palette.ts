@@ -124,7 +124,7 @@ export function saturation(hex: string): number {
   return l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min);
 }
 
-/** Dominant colours of an image, most common first. */
+/** Dominant colours of an image, most common first, duplicates removed. */
 export async function extractPalette(file: File, count = 6): Promise<string[]> {
   const image = await decodeImage(file);
   const pixels = samplePixels(image);
@@ -132,7 +132,14 @@ export async function extractPalette(file: File, count = 6): Promise<string[]> {
   if (pixels.length === 0) {
     throw new Error("That image had no opaque pixels to read");
   }
-  return medianCut(pixels, count).map(toHex).map((hex) => hex.toUpperCase());
+  // A flat image (few distinct colours) yields buckets of identical pixels, so
+  // the raw cut can repeat a value. Collapse them rather than showing the same
+  // swatch several times.
+  const seen = new Set<string>();
+  for (const hex of medianCut(pixels, count).map(toHex)) {
+    seen.add(hex.toUpperCase());
+  }
+  return [...seen];
 }
 
 type PaletteColors = Pick<

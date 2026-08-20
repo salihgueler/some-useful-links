@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
 import type { PageConfiguration } from "@/lib/config/links.types";
+import { readableInk, softInk } from "@/lib/color";
 
 const SCALE = 1;
 
@@ -15,16 +16,24 @@ function roundedRect(
   context.roundRect(x, y, width, height, radius);
 }
 
-function drawLogo(context: CanvasRenderingContext2D) {
+/**
+ * Built-in mark, drawn in the page's own logo colour with features in an ink
+ * derived from it, so the face stays visible on a dark or a light logo colour.
+ */
+function drawLogoMark(
+  context: CanvasRenderingContext2D,
+  logoColor: string,
+  ink: string,
+) {
   roundedRect(context, 70, 59, 66, 66, 20);
-  context.fillStyle = "#FFFFFF";
+  context.fillStyle = logoColor;
   context.fill();
-  context.fillStyle = "#2A2738";
+  context.fillStyle = ink;
   context.beginPath();
   context.arc(95, 84, 3.5, 0, Math.PI * 2);
   context.arc(112, 84, 3.5, 0, Math.PI * 2);
   context.fill();
-  context.strokeStyle = "#2A2738";
+  context.strokeStyle = ink;
   context.lineWidth = 4;
   context.lineCap = "round";
   context.beginPath();
@@ -32,8 +41,19 @@ function drawLogo(context: CanvasRenderingContext2D) {
   context.stroke();
 }
 
+/** Owner-supplied logo, contained in the same 66px box as the built-in mark. */
+async function drawOwnerLogo(context: CanvasRenderingContext2D, dataUrl: string) {
+  const image = new Image();
+  image.src = dataUrl;
+  await image.decode();
+  const scale = Math.min(96 / image.width, 66 / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  context.drawImage(image, 70, 59 + (66 - height) / 2, width, height);
+}
+
+/** Splits a title across at most two lines, balancing them by length. */
 function headlineLines(title: string) {
-  if (title === "Some Useful Links") return ["Good finds,", "one useful page."];
   const words = title.split(/\s+/);
   const lines = ["", ""];
   for (const word of words) {
@@ -73,24 +93,36 @@ export async function generateSocialCard(
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Canvas is not supported in this browser");
 
+  // Two panels, two surfaces, so each needs its own foreground -- the same rule
+  // the public page follows. Hard-coded ink made the card unreadable on any
+  // theme whose header was dark.
+  const panel = appearance.headerColor;
+  const sidePanel = appearance.logoColor;
+  const panelInk = readableInk(panel);
+  const panelInkSoft = softInk(panel, panelInk);
+  const sideInk = readableInk(sidePanel);
+  const sideInkSoft = softInk(sidePanel, sideInk);
+
   await document.fonts.ready;
-  context.fillStyle = appearance.headerColor;
+  context.fillStyle = panel;
   context.fillRect(0, 0, 840, 630);
-  context.fillStyle = appearance.logoColor;
+  context.fillStyle = sidePanel;
   context.fillRect(840, 0, 360, 630);
 
-  drawLogo(context);
-  context.fillStyle = "#2A2738";
-  context.font = '800 21px "Manrope", system-ui, sans-serif';
-  context.fillText("SOME USEFUL LINKS", 156, 99);
+  if (meta.logo) {
+    await drawOwnerLogo(context, meta.logo);
+  } else {
+    drawLogoMark(context, appearance.logoColor, readableInk(appearance.logoColor));
+  }
 
   const titleLines = headlineLines(meta.title);
+  context.fillStyle = panelInk;
   context.font = '800 68px "Manrope", system-ui, sans-serif';
   titleLines.forEach((line, index) => {
     context.fillText(line, 70, 246 + index * 79);
   });
 
-  context.fillStyle = "#6C6878";
+  context.fillStyle = panelInkSoft;
   context.font = '400 23px "Manrope", system-ui, sans-serif';
   wrapText(context, meta.subtitle, 650).forEach((line, index) => {
     context.fillText(line, 70, 419 + index * 32);
@@ -113,34 +145,34 @@ export async function generateSocialCard(
   context.shadowBlur = 24;
   context.shadowOffsetY = 12;
   roundedRect(context, 904, 121, 260, 261, 24);
+  // The QR panel stays white: a code has to keep its own quiet-zone contrast
+  // regardless of the theme, or scanners start failing.
   context.fillStyle = "#FFFFFF";
   context.fill();
   context.shadowColor = "transparent";
   context.drawImage(qrImage, 933, 150, 202, 202);
 
-  context.fillStyle = "#2A2738";
+  context.fillStyle = sideInk;
   context.font = '800 15px "Manrope", system-ui, sans-serif';
-  context.fillText("SCAN FOR GOOD FINDS", 943, 431);
-  context.fillStyle = "#4B706C";
-  context.font = '400 14px "Manrope", system-ui, sans-serif';
-  context.fillText("One tap. Five fresh rabbit holes.", 931, 467);
+  context.fillText("SCAN TO OPEN", 943, 431);
 
-  context.fillStyle = "#2A2738";
+  // Counted, not invented: this said "Five fresh rabbit holes" on every card.
+  const live = page.links.filter((link) => link.enabled !== false).length;
+  context.fillStyle = sideInkSoft;
+  context.font = '400 14px "Manrope", system-ui, sans-serif';
+  context.fillText(`${live} link${live === 1 ? "" : "s"} worth keeping`, 943, 467);
+
+  context.fillStyle = panelInk;
   context.font = '600 16px "Manrope", system-ui, sans-serif';
   const publicUrl = new URL(meta.url);
   const displayUrl = `${publicUrl.host}${publicUrl.pathname.replace(/\/$/, "")}`;
   context.fillText(displayUrl, 70, 585);
-  context.fillStyle = "#3B625D";
-  context.font = '600 14px "Manrope", system-ui, sans-serif';
-  context.fillText("CURATED · UPDATED WEEKLY", 942, 582);
 
-  context.fillStyle = "#FF8C62";
-  context.font = '700 31px "Manrope", system-ui, sans-serif';
-  context.fillText("✦", 762, 108);
-  context.fillStyle = "#FDEDBF";
-  roundedRect(context, 776, 557, 15, 15, 4);
-  context.fill();
-  context.fillStyle = "#FFC09D";
-  roundedRect(context, 801, 529, 22, 22, 6);
-  context.fill();
+  // The page's own badge wording, not a fixed "CURATED · UPDATED WEEKLY".
+  const badge = (meta.badge ?? "Curated with care").trim();
+  if (badge) {
+    context.fillStyle = sideInkSoft;
+    context.font = '600 14px "Manrope", system-ui, sans-serif';
+    context.fillText(badge, 943, 582);
+  }
 }
