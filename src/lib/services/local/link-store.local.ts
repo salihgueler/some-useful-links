@@ -129,6 +129,28 @@ export class LocalLinkStore implements LinkStore {
     return clonePage(page);
   }
 
+  async renamePage(
+    slug: string,
+    nextSlug: string,
+    page: PageConfiguration,
+  ): Promise<PageConfiguration> {
+    if (page.slug !== nextSlug) {
+      throw new PublicError("The page body must carry the new slug");
+    }
+    assertPage(page);
+    const config = await this.getConfiguration();
+    const index = config.pages.findIndex((candidate) => candidate.slug === slug);
+    if (index < 0) throw new PublicError(`Page "${slug}" was not found`, 404);
+    if (config.pages.some((candidate) => candidate.slug === nextSlug)) {
+      throw new PublicError(`The slug "${nextSlug}" is already taken`);
+    }
+    config.pages[index] = clonePage(page);
+    // Follow the rename so the default does not point at a slug that is gone.
+    if (config.defaultSlug === slug) config.defaultSlug = nextSlug;
+    await this.writeConfiguration(config);
+    return clonePage(page);
+  }
+
   async deletePage(slug: string): Promise<boolean> {
     const config = await this.getConfiguration();
     if (config.defaultSlug === slug) {

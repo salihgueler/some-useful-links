@@ -46,6 +46,18 @@ export interface LinkStore {
     page: PageConfiguration,
   ): Promise<PageConfiguration>;
 
+  /**
+   * Moves a page to a new slug, carrying its analytics history with it.
+   *
+   * The old slug is RELEASED, not redirected: it stops resolving and becomes
+   * available to anyone. `page` must already carry the new slug.
+   */
+  renamePage(
+    slug: string,
+    nextSlug: string,
+    page: PageConfiguration,
+  ): Promise<PageConfiguration>;
+
   /** Deletes a non-default page and returns whether one was removed. */
   deletePage(slug: string): Promise<boolean>;
 }

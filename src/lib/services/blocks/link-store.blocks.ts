@@ -139,6 +139,20 @@ export class BlocksLinkStore implements LinkStore {
     return page;
   }
 
+  async renamePage(
+    slug: string,
+    nextSlug: string,
+    page: PageConfiguration,
+  ): Promise<PageConfiguration> {
+    if (page.slug !== nextSlug) {
+      throw new Error("The page body must carry the new slug");
+    }
+    await serverRpc("renamePage", [slug, nextSlug, JSON.stringify(page)], {
+      authenticated: true,
+    });
+    return page;
+  }
+
   async deletePage(slug: string): Promise<boolean> {
     try {
       const { deleted } = await serverRpc<{ deleted: boolean }>(
