@@ -1,4 +1,4 @@
-import { luminance, mix, parseHex, toHex, type Rgb } from "@/lib/color";
+import { distance, luminance, mix, parseHex, toHex, type Rgb } from "@/lib/color";
 import type { PageAppearance } from "@/lib/config/links.types";
 
 /**
@@ -114,7 +114,7 @@ function medianCut(pixels: Rgb[], count: number): Rgb[] {
     .map(averageOf);
 }
 
-/** HSL saturation, 0..1. Used to tell a brand colour from a neutral. */
+/** HSL saturation, 0..1. Kept for reference; see vividness for ranking. */
 export function saturation(hex: string): number {
   const { r, g, b } = parseHex(hex);
   const max = Math.max(r, g, b) / 255;
@@ -122,6 +122,27 @@ export function saturation(hex: string): number {
   if (max === min) return 0;
   const l = (max + min) / 2;
   return l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min);
+}
+
+/**
+ * How colourful a swatch reads, 0..1.
+ *
+ * HSL saturation is the wrong ranking for "which colour is this image's brand":
+ * it divides by lightness, so a near-black navy scores higher than a clearly
+ * visible olive. Measured on one real image, #110D3D (luminance 0.007) scored
+ * 0.649 while the olive that dominated the picture scored 0.356 -- so the two
+ * near-blacks won and every visible colour was discarded.
+ *
+ * Raw chroma is lightness-independent, and the mid-lightness weight discounts
+ * swatches so dark or so pale that their hue cannot be perceived anyway.
+ */
+export function vividness(hex: string): number {
+  const { r, g, b } = parseHex(hex);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const chroma = (max - min) / 255;
+  const lightness = (max + min) / 2 / 255;
+  return chroma * (1 - Math.abs(2 * lightness - 1));
 }
 
 /** Dominant colours of an image, most common first, duplicates removed. */
@@ -155,34 +176,61 @@ type PaletteColors = Pick<
 /**
  * Maps extracted colours onto the page's colour roles.
  *
- * Surfaces are DERIVED rather than used raw: a photograph's most common colour
- * is usually a mid-tone that makes a terrible page background. So the lightest
- * sample is pushed toward white for the background and tinted with the brand
- * colour for the header band, which keeps the image's character without
- * flattening the page's contrast.
+ * Two rules make the result actually look like the picture:
+ *
+ * 1. Roles are filled by VIVIDNESS, not HSL saturation, so the colour a viewer
+ *    would name as the image's own lands in a visible role.
+ * 2. Light or dark is taken from the image, weighted toward its most common
+ *    colours. Forcing a near-white background made every dark picture produce
+ *    the same pale grey page, which is the reason extracted palettes did not
+ *    resemble their source.
+ *
+ * Surfaces are still derived rather than used raw -- a photo's dominant colour
+ * is usually a mid-tone that makes a poor page background -- but they are
+ * derived FROM the brand colour, so they carry its hue instead of going grey.
  */
 export function paletteToColors(palette: string[]): PaletteColors {
   if (palette.length === 0) throw new Error("An empty palette cannot be mapped");
 
-  const byChroma = [...palette].sort((a, b) => saturation(b) - saturation(a));
-  const byLight = [...palette].sort((a, b) => luminance(b) - luminance(a));
+  const byVivid = [...palette].sort((a, b) => vividness(b) - vividness(a));
+  const brand = byVivid[0];
 
-  const brand = byChroma[0];
-  const accent = byChroma.find((hex) => hex !== brand) ?? brand;
-  const lightest = byLight[0];
+  // An accent adjacent to the brand reads as a mistake, so require real
+  // separation and only fall back to the next swatch if nothing qualifies.
+  const accent =
+    byVivid.slice(1).find((hex) => distance(hex, brand) > 60) ??
+    byVivid[1] ??
+    mix(brand, "#FFFFFF", 0.4);
 
-  // Primary carries text and buttons, so it has to be dark enough to hold white
-  // text; a pale brand colour gets darkened rather than rejected.
-  const primary = luminance(brand) > 0.32 ? mix(brand, "#000000", 0.42) : brand;
-  const background = mix(lightest, "#FFFFFF", 0.86);
+  // Weighted toward the first entries, which median cut returns most-common
+  // first, so a picture that is mostly dark yields a dark page.
+  const weights = palette.slice(0, 3);
+  const weighted =
+    weights.reduce((sum, hex, index) => sum + luminance(hex) * (3 - index), 0) /
+    weights.reduce((sum, _hex, index) => sum + (3 - index), 0);
+  const dark = weighted < 0.2;
+
+  const background = dark
+    ? mix(brand, "#000000", 0.84)
+    : mix(brand, "#FFFFFF", 0.93);
+  const header = dark
+    ? mix(brand, "#000000", 0.66)
+    : mix(brand, "#FFFFFF", 0.74);
+
+  // Primary carries buttons with white text, so it must be dark enough to hold
+  // them; a pale brand is darkened rather than rejected.
+  const primary = luminance(brand) > 0.3 ? mix(brand, "#000000", 0.45) : brand;
 
   return {
     primaryColor: primary.toUpperCase(),
-    headerColor: mix(background, brand, 0.16).toUpperCase(),
+    headerColor: header.toUpperCase(),
     backgroundColor: background.toUpperCase(),
     accentColor: accent.toUpperCase(),
-    logoColor: mix(accent, "#FFFFFF", 0.35).toUpperCase(),
-    badgeColor: mix(accent, "#FFFFFF", 0.55).toUpperCase(),
+    logoColor: brand.toUpperCase(),
+    badgeColor: (dark
+      ? mix(accent, "#000000", 0.3)
+      : mix(accent, "#FFFFFF", 0.45)
+    ).toUpperCase(),
   };
 }
 

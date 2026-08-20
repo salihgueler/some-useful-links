@@ -35,7 +35,7 @@ export default async function SharePage({
             <span><strong>Live QR</strong>Canonical URL</span>
           </div>
         </div>
-        <ShareCardPanel page={page} className="admin-share-card" />
+        <ShareCardPanel page={page} className="admin-share-card" editable />
       </section>
     </div>
   );

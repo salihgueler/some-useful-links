@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -18,6 +18,7 @@ import type {
   PageConfiguration,
 } from "@/lib/config/links.types";
 import { Modal } from "@/components/ui/Modal";
+import { UnsavedGuard } from "@/components/admin/UnsavedGuard";
 
 function orderedLinks(links: LinkEntry[]) {
   return links.map((link, index) => ({ ...link, order: index }));
@@ -36,6 +37,7 @@ function toSlug(value: string) {
 export function LinksEditor({ initialPage }: { initialPage: PageConfiguration }) {
   const router = useRouter();
   const [page, setPage] = useState(() => structuredClone(initialPage));
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(initialPage));
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [renaming, setRenaming] = useState(false);
@@ -118,28 +120,37 @@ export function LinksEditor({ initialPage }: { initialPage: PageConfiguration })
     }));
   };
 
+  const dirty = useMemo(
+    () => JSON.stringify(page) !== savedSnapshot,
+    [page, savedSnapshot],
+  );
+
+  /** Returns whether the write succeeded, which the guard needs before leaving. */
+  const persist = async () => {
+    const body = { ...page, links: orderedLinks(page.links) };
+    const response = await fetch(`/app-api/pages/${page.slug}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = (await response.json().catch(() => ({}))) as { error?: string };
+    setMessage(
+      response.ok ? "Changes saved" : result.error ?? "The page could not be saved",
+    );
+    if (response.ok) setSavedSnapshot(JSON.stringify(body));
+    return response.ok;
+  };
+
   const save = () => {
     setMessage("");
-    startTransition(async () => {
-      const response = await fetch(`/app-api/pages/${page.slug}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...page, links: orderedLinks(page.links) }),
-      });
-      const result = (await response.json()) as {
-        error?: string;
-        links?: LinkEntry[];
-      };
-      setMessage(
-        response.ok
-          ? "Changes saved"
-          : result.error ?? "The page could not be saved",
-      );
+    startTransition(() => {
+      void persist();
     });
   };
 
   return (
     <div className="admin-editor">
+      <UnsavedGuard dirty={dirty} onSave={persist} label="links" />
       <header className="editor-heading">
         <div>
           <p className="eyebrow">/{page.slug}</p>

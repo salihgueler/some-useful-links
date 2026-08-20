@@ -24,6 +24,10 @@ export interface LinkMeta {
   badge?: string;
   /** Conference logo as a raster data URL; replaces the built-in logo mark. */
   logo?: string;
+  /** Share-card label beside the QR code. */
+  shareCaption?: string;
+  /** Share-card line under the caption; defaults to the live link count. */
+  shareNote?: string;
 }
 
 export interface PageAppearance {

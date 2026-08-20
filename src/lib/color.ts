@@ -102,6 +102,14 @@ export function softInk(surface: string, ink: string, target = 4.5): string {
   return ink;
 }
 
+/** Straight-line distance in RGB, 0..441. Coarse but enough to tell two
+ *  swatches apart when picking an accent that is not a near-duplicate. */
+export function distance(a: string, b: string): number {
+  const x = parseHex(a);
+  const y = parseHex(b);
+  return Math.hypot(x.r - y.r, x.g - y.g, x.b - y.b);
+}
+
 /** A hairline that reads as an edge on either a light or a dark surface. */
 export function borderOn(surface: string): string {
   return mix(surface, luminance(surface) > 0.42 ? "#000000" : "#ffffff", 0.12);

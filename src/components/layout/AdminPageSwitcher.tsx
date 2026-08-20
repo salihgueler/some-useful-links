@@ -5,6 +5,7 @@ import { Plus, Trash2, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import type { PageSummary } from "@/lib/config/links.types";
 import { Modal } from "@/components/ui/Modal";
+import { requestNavigation } from "@/lib/unsaved";
 
 function toSlug(value: string) {
   return value
@@ -39,7 +40,11 @@ export function AdminPageSwitcher({
   const isOnlyCollection = pages.length <= 1;
 
   const changePage = (nextSlug: string) => {
-    router.push(`/admin/${nextSlug}/${section}`);
+    const destination = `/admin/${nextSlug}/${section}`;
+    // An editor with unsaved changes takes over: this is not an anchor, so the
+    // guard's click listener cannot see it.
+    if (requestNavigation(destination)) return;
+    router.push(destination);
   };
 
   const deletePage = async () => {

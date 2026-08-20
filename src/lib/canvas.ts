@@ -4,6 +4,30 @@ import { readableInk, softInk } from "@/lib/color";
 
 const SCALE = 1;
 
+/** The card is authored in this coordinate space and scaled to the target. */
+const DESIGN_WIDTH = 1200;
+const DESIGN_HEIGHT = 630;
+
+export interface CardSize {
+  id: string;
+  label: string;
+  width: number;
+  height: number;
+}
+
+export const CARD_SIZES: readonly CardSize[] = [
+  { id: "social", label: "Social · 1200 × 630", width: 1200, height: 630 },
+  { id: "social-2x", label: "Social 2× · 2400 × 1260", width: 2400, height: 1260 },
+  { id: "full-hd", label: "Full HD · 1920 × 1080", width: 1920, height: 1080 },
+];
+
+/** Defaults for the two lines beside the QR code when a page sets neither. */
+export const DEFAULT_SHARE_CAPTION = "SCAN TO OPEN";
+export function defaultShareNote(page: PageConfiguration): string {
+  const live = page.links.filter((link) => link.enabled !== false).length;
+  return `${live} link${live === 1 ? "" : "s"} worth keeping`;
+}
+
 function roundedRect(
   context: CanvasRenderingContext2D,
   x: number,
@@ -86,12 +110,19 @@ function wrapText(
 export async function generateSocialCard(
   canvas: HTMLCanvasElement,
   page: PageConfiguration,
+  size: CardSize = CARD_SIZES[0],
 ) {
   const { meta, appearance } = page;
-  canvas.width = 1200 * SCALE;
-  canvas.height = 630 * SCALE;
+  canvas.width = size.width * SCALE;
+  canvas.height = size.height * SCALE;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Canvas is not supported in this browser");
+
+  // Everything below is drawn in the 1200x630 design space; the transform maps
+  // it onto the requested pixel size, so each option renders natively crisp
+  // rather than being an upscaled copy of one bitmap.
+  const scale = size.width / DESIGN_WIDTH;
+  const offsetY = (size.height - DESIGN_HEIGHT * scale) / 2;
 
   // Two panels, two surfaces, so each needs its own foreground -- the same rule
   // the public page follows. Hard-coded ink made the card unreadable on any
@@ -104,10 +135,16 @@ export async function generateSocialCard(
   const sideInkSoft = softInk(sidePanel, sideInk);
 
   await document.fonts.ready;
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  const splitX = 840 * scale;
   context.fillStyle = panel;
-  context.fillRect(0, 0, 840, 630);
+  context.fillRect(0, 0, splitX, size.height);
   context.fillStyle = sidePanel;
-  context.fillRect(840, 0, 360, 630);
+  context.fillRect(splitX, 0, size.width - splitX, size.height);
+
+  // Content is centred vertically, so a taller aspect gains margin rather than
+  // stretching the layout.
+  context.setTransform(scale, 0, 0, scale, 0, offsetY);
 
   if (meta.logo) {
     await drawOwnerLogo(context, meta.logo);
@@ -152,15 +189,21 @@ export async function generateSocialCard(
   context.shadowColor = "transparent";
   context.drawImage(qrImage, 933, 150, 202, 202);
 
-  context.fillStyle = sideInk;
-  context.font = '800 15px "Manrope", system-ui, sans-serif';
-  context.fillText("SCAN TO OPEN", 943, 431);
+  const caption = (meta.shareCaption ?? DEFAULT_SHARE_CAPTION).trim();
+  if (caption) {
+    context.fillStyle = sideInk;
+    context.font = '800 15px "Manrope", system-ui, sans-serif';
+    context.fillText(caption, 943, 431);
+  }
 
-  // Counted, not invented: this said "Five fresh rabbit holes" on every card.
-  const live = page.links.filter((link) => link.enabled !== false).length;
-  context.fillStyle = sideInkSoft;
-  context.font = '400 14px "Manrope", system-ui, sans-serif';
-  context.fillText(`${live} link${live === 1 ? "" : "s"} worth keeping`, 943, 467);
+  // Defaults to a counted claim rather than an invented one; this line read
+  // "Five fresh rabbit holes" on every card regardless of content.
+  const note = (meta.shareNote ?? defaultShareNote(page)).trim();
+  if (note) {
+    context.fillStyle = sideInkSoft;
+    context.font = '400 14px "Manrope", system-ui, sans-serif';
+    context.fillText(note, 943, 467);
+  }
 
   context.fillStyle = panelInk;
   context.font = '600 16px "Manrope", system-ui, sans-serif';

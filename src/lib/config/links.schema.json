@@ -79,6 +79,16 @@
           "maxLength": 28,
           "description": "Small label under the header. Empty or absent hides it entirely."
         },
+        "shareCaption": {
+          "type": "string",
+          "maxLength": 24,
+          "description": "Small label beside the share-card QR code."
+        },
+        "shareNote": {
+          "type": "string",
+          "maxLength": 44,
+          "description": "Line under the share-card caption. Defaults to the live link count."
+        },
         "logo": {
           "type": "string",
           "maxLength": 262144,

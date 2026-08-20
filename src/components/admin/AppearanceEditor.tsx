@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition, type CSSProperties } from "react";
+import { useMemo, useRef, useState, useTransition, type CSSProperties } from "react";
 import { ImageDown, Save, Trash2, Upload } from "lucide-react";
 import type {
   ButtonStyle,
@@ -12,6 +12,7 @@ import { DEFAULT_BADGE } from "@/components/links/PublicLinkPage";
 import { borderOn, readableInk, softInk, surfaceOn } from "@/lib/color";
 import { extractPalette, paletteToColors, readLogoDataUrl } from "@/lib/palette";
 import { THEME_PRESETS, activePresetId } from "@/lib/config/themes";
+import { UnsavedGuard } from "@/components/admin/UnsavedGuard";
 
 type PreviewStyle = CSSProperties & Record<`--preview-${string}`, string>;
 
@@ -36,6 +37,9 @@ export function AppearanceEditor({
   initialPage: PageConfiguration;
 }) {
   const [page, setPage] = useState(() => structuredClone(initialPage));
+  // Updated on a successful write so the dirty check compares against what the
+  // server now holds rather than what the page loaded with.
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(initialPage));
   const [message, setMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const [palette, setPalette] = useState<string[] | null>(null);
@@ -95,20 +99,33 @@ export function AppearanceEditor({
     }
   };
 
+  /** Compared against the server's copy, so reverting by hand clears the flag. */
+  const dirty = useMemo(
+    () => JSON.stringify(page) !== savedSnapshot,
+    [page, savedSnapshot],
+  );
+
+  /** Returns whether the write succeeded, which the guard needs before leaving. */
+  const persist = async () => {
+    const response = await fetch(`/app-api/pages/${page.slug}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(page),
+    });
+    const result = (await response.json().catch(() => ({}))) as { error?: string };
+    setMessage(
+      response.ok
+        ? "Appearance saved"
+        : result.error ?? "Appearance could not be saved",
+    );
+    if (response.ok) setSavedSnapshot(JSON.stringify(page));
+    return response.ok;
+  };
+
   const save = () => {
     setMessage("");
-    startTransition(async () => {
-      const response = await fetch(`/app-api/pages/${page.slug}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(page),
-      });
-      const result = (await response.json()) as { error?: string };
-      setMessage(
-        response.ok
-          ? "Appearance saved"
-          : result.error ?? "Appearance could not be saved",
-      );
+    startTransition(() => {
+      void persist();
     });
   };
 
@@ -138,6 +155,7 @@ export function AppearanceEditor({
 
   return (
     <div className="admin-editor appearance-editor">
+      <UnsavedGuard dirty={dirty} onSave={persist} label="appearance" />
       <header className="editor-heading">
         <div>
           <h1>Appearance</h1>
@@ -299,7 +317,6 @@ export function AppearanceEditor({
                   }))
                 }
               />
-              <small>Leave it empty to hide the badge entirely.</small>
             </label>
             <label className="color-control">
               <input
@@ -314,6 +331,9 @@ export function AppearanceEditor({
                 <small>{appearance.badgeColor ?? DEFAULT_BADGE_COLOR}</small>
               </span>
             </label>
+            <p className="field-hint">
+              Leave it empty to hide the badge entirely.
+            </p>
           </div>
 
           <div className="section-copy">
