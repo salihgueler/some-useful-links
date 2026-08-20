@@ -985,10 +985,18 @@ a {
 }
 
 .readonly-url {
-  justify-content: space-between;
   padding-left: 13px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
+}
+
+/* Groups both controls at the trailing edge. space-between left the pencil
+   stranded mid-field once a second control joined the row. */
+.readonly-url > span:first-child {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .readonly-url a {
@@ -2681,4 +2689,13 @@ a {
 .badge-controls .field-hint {
   grid-column: 1 / -1;
   margin: 0 0 8px;
+}
+
+/* Header wording, sitting with the header's colours on the Appearance tab. */
+.header-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: 4px;
+  margin-bottom: 8px;
 }

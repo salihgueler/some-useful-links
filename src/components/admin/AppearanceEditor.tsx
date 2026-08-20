@@ -61,6 +61,13 @@ export function AppearanceEditor({
     }));
   };
 
+  const setMeta = <K extends keyof PageConfiguration["meta"]>(
+    key: K,
+    value: PageConfiguration["meta"][K],
+  ) => {
+    setPage((current) => ({ ...current, meta: { ...current.meta, [key]: value } }));
+  };
+
   const applyColors = (colors: Partial<PageAppearance>) => {
     setPage((current) => ({
       ...current,
@@ -297,6 +304,33 @@ export function AppearanceEditor({
           {imageError ? <p className="form-error">{imageError}</p> : null}
 
           <div className="section-copy">
+            <h2>Header</h2>
+            <p>
+              The wording shown above your links, previewed on the right as you
+              type.
+            </p>
+          </div>
+          <div className="header-fields">
+            <label className="field">
+              <span>Title</span>
+              <input
+                value={meta.title}
+                maxLength={56}
+                onChange={(event) => setMeta("title", event.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>Subtitle</span>
+              <input
+                value={meta.subtitle}
+                maxLength={80}
+                onChange={(event) => setMeta("subtitle", event.target.value)}
+              />
+              <small>{meta.subtitle.length}/80</small>
+            </label>
+          </div>
+
+          <div className="section-copy">
             <h2>Badge</h2>
             <p>
               The small label under the header. Its wording and its colour live
@@ -310,12 +344,7 @@ export function AppearanceEditor({
                 value={meta.badge ?? DEFAULT_BADGE}
                 maxLength={28}
                 placeholder="Leave empty to hide the badge"
-                onChange={(event) =>
-                  setPage((current) => ({
-                    ...current,
-                    meta: { ...current.meta, badge: event.target.value },
-                  }))
-                }
+                onChange={(event) => setMeta("badge", event.target.value)}
               />
             </label>
             <label className="color-control">

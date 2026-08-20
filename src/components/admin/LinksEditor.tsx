@@ -173,23 +173,13 @@ export function LinksEditor({ initialPage }: { initialPage: PageConfiguration })
 
       <section className="editor-section page-details">
         <div className="section-copy">
-          <h2>Page details</h2>
-          <p>The identity visitors see above your links.</p>
+          <h2>Public address</h2>
+          <p>
+            Where this collection lives. Its title, subtitle and badge are on the
+            Appearance tab, beside the preview that shows them.
+          </p>
         </div>
         <div className="editor-fields two-column-fields">
-          <label className="field">
-            <span>Title</span>
-            <input
-              value={page.meta.title}
-              maxLength={56}
-              onChange={(event) =>
-                setPage((current) => ({
-                  ...current,
-                  meta: { ...current.meta, title: event.target.value },
-                }))
-              }
-            />
-          </label>
           <label className="field">
             <span>Public URL</span>
             <div className="readonly-url">
@@ -216,20 +206,6 @@ export function LinksEditor({ initialPage }: { initialPage: PageConfiguration })
                 <ExternalLink size={16} />
               </a>
             </div>
-          </label>
-          <label className="field field-wide">
-            <span>Subtitle</span>
-            <input
-              value={page.meta.subtitle}
-              maxLength={80}
-              onChange={(event) =>
-                setPage((current) => ({
-                  ...current,
-                  meta: { ...current.meta, subtitle: event.target.value },
-                }))
-              }
-            />
-            <small>{page.meta.subtitle.length}/80</small>
           </label>
         </div>
       </section>
