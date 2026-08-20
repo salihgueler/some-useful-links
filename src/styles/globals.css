@@ -143,6 +143,12 @@ a {
 .visitor-page {
   min-height: 100vh;
   overflow: hidden;
+  /* Browser surfaces belong to the design too: selection, caret and scrollbar
+     otherwise ship with defaults from no design system, and they look wrong the
+     moment a page uses a dark theme. */
+  caret-color: var(--page-primary, var(--primary));
+  scrollbar-color: var(--page-primary, var(--primary))
+    var(--page-background, var(--background));
   background:
     linear-gradient(
       to bottom,
@@ -151,6 +157,21 @@ a {
       var(--page-background, var(--background)) 280px,
       var(--page-background, var(--background)) 100%
     );
+}
+
+.visitor-page ::selection {
+  background: var(--page-accent, var(--accent));
+  color: var(--page-ink, var(--ink));
+}
+
+/* Owner-supplied conference logo, standing in for the built-in mark. Contained
+   rather than cropped so a wide wordmark is not cut off. */
+.visitor-logo {
+  display: block;
+  width: auto;
+  max-width: 200px;
+  height: 64px;
+  object-fit: contain;
 }
 
 .visitor-page .logo-mark {
@@ -199,18 +220,9 @@ a {
   text-align: center;
 }
 
-.header-sparkle {
-  position: absolute;
-  top: 2px;
-  left: 22px;
-  color: var(--page-accent, #f88960);
-  font-size: 23px;
-  line-height: 1;
-}
-
 .visitor-header h1 {
   margin: 25px 0 5px;
-  color: var(--ink);
+  color: var(--page-header-ink, var(--ink));
   font-size: 32px;
   font-weight: 800;
   line-height: 40px;
@@ -220,7 +232,7 @@ a {
 .visitor-header p {
   max-width: 300px;
   margin: 0;
-  color: var(--muted);
+  color: var(--page-header-ink-soft, var(--muted));
   font-size: 15px;
   font-weight: 400;
   line-height: 22px;
@@ -232,14 +244,14 @@ a {
   left: 50%;
   z-index: 1;
   width: max-content;
-  padding: 8px 16px 7px;
+  padding: 7px 16px;
   border-radius: 999px;
-  background: #ffd9c3;
-  color: #4e4140;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 16px;
-  text-transform: uppercase;
+  background: var(--page-badge, #ffd9c3);
+  color: var(--page-badge-ink, #5c3317);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 18px;
   transform: translateX(-50%);
 }
 
@@ -258,9 +270,9 @@ a {
   align-items: center;
   gap: 14px;
   padding: 11px 16px 11px 13px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 16px;
-  background: var(--surface);
+  background: var(--page-surface, var(--surface));
   box-shadow: 0 5px 14px rgba(42, 39, 56, 0.06);
   transition:
     transform 180ms ease-out,
@@ -270,13 +282,13 @@ a {
 }
 
 .link-row:hover {
-  border-color: #c9c2eb;
+  border-color: color-mix(in srgb, var(--page-primary, var(--primary)) 38%, transparent);
   box-shadow: 0 9px 20px rgba(42, 39, 56, 0.1);
   transform: translateY(-2px);
 }
 
 .link-row:active {
-  background: #faf9ff;
+  background: color-mix(in srgb, var(--page-primary, var(--primary)) 6%, var(--page-surface, var(--surface)));
   box-shadow: 0 2px 8px rgba(42, 39, 56, 0.06);
   transform: translateY(1px);
 }
@@ -311,7 +323,7 @@ a {
 }
 
 .link-copy strong {
-  color: var(--ink);
+  color: var(--page-ink, var(--ink));
   font-size: 15px;
   font-weight: 600;
   line-height: 20px;
@@ -319,10 +331,10 @@ a {
 
 .link-copy span {
   margin-top: 2px;
-  color: var(--muted);
-  font-size: 11px;
+  color: var(--page-ink-soft, var(--muted));
+  font-size: 12px;
   font-weight: 400;
-  line-height: 16px;
+  line-height: 17px;
 }
 
 .link-chevron {
@@ -376,13 +388,13 @@ a {
   position: relative;
   margin-top: 35px;
   padding-top: 29px;
-  border-top: 1px solid #dedbe8;
+  border-top: 1px solid var(--page-border, #dedbe8);
   text-align: center;
 }
 
 .visitor-footer p {
   margin: 0;
-  color: #6a6575;
+  color: var(--page-ink-soft, #6a6575);
   font-size: 13px;
   font-weight: 400;
   line-height: 20px;
@@ -410,8 +422,8 @@ a {
 .admin-app select:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 2px var(--background),
-    0 0 0 5px var(--accent);
+    0 0 0 2px var(--page-background, var(--background)),
+    0 0 0 5px var(--page-accent, var(--accent));
 }
 
 .visitor-page[data-button-style="flat"] .link-row {
@@ -420,7 +432,7 @@ a {
 }
 
 .visitor-page[data-button-style="outline"] .link-row {
-  border: 2px solid color-mix(in srgb, var(--page-primary) 32%, white);
+  border: 2px solid color-mix(in srgb, var(--page-primary) 32%, var(--page-background, white));
   box-shadow: none;
   background: transparent;
 }
