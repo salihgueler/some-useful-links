@@ -1,5 +1,6 @@
 import { serverRpc } from "@/lib/auth/server-rpc";
 import type {
+  CountryCount,
   TrackVisitInput,
   VisitEvent,
   VisitMetrics,
@@ -66,7 +67,13 @@ export class BlocksVisitTracker implements VisitTracker {
   async track(input: TrackVisitInput): Promise<VisitEvent> {
     const { eventId } = await serverRpc<{ ok: boolean; eventId: string }>(
       "track",
-      [input.pageSlug, input.type, input.linkId ?? null, input.referrer ?? null],
+      [
+        input.pageSlug,
+        input.type,
+        input.linkId ?? null,
+        input.referrer ?? null,
+        input.country ?? null,
+      ],
     );
     return {
       ...input,
@@ -89,6 +96,24 @@ export class BlocksVisitTracker implements VisitTracker {
       total = merge(total, metrics);
     }
     return total;
+  }
+
+  async getCountries(input: VisitMetricsQuery = {}): Promise<CountryCount[]> {
+    const slugs = input.pageSlug ? [input.pageSlug] : await ownedSlugs();
+    const totals = new Map<string, number>();
+    for (const slug of slugs) {
+      const { countries } = await serverRpc<{ countries: CountryCount[] }>(
+        "queryCountries",
+        [slug, input.startDate, input.endDate],
+        { authenticated: true },
+      );
+      for (const row of countries) {
+        totals.set(row.country, (totals.get(row.country) ?? 0) + row.visits);
+      }
+    }
+    return [...totals]
+      .map(([country, visits]) => ({ country, visits }))
+      .sort((a, b) => b.visits - a.visits || a.country.localeCompare(b.country));
   }
 
   /** Clears every event across this owner's pages, and only theirs. */

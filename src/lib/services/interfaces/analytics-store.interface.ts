@@ -28,6 +28,8 @@ export interface ReferrerAnalytics {
   percentage: number;
 }
 
+import type { CountryCount } from "@/lib/services/interfaces/visit-tracker.interface";
+
 export interface AnalyticsSummary {
   range: { startDate: string; endDate: string };
   totals: {
@@ -45,6 +47,12 @@ export interface AnalyticsSummary {
   timeline: AnalyticsPoint[];
   topLinks: LinkAnalytics[];
   referrers: ReferrerAnalytics[];
+  /**
+   * Visit counts per ISO 3166-1 alpha-2 country. Optional because the analytics
+   * store does not produce it -- it comes from the visit tracker's own
+   * day-granular country table and is composed in by the API route.
+   */
+  countries?: CountryCount[];
 }
 
 export interface PageAnalyticsData {

@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type {
+  CountryCount,
   TrackVisitInput,
   VisitEvent,
   VisitMetrics,
@@ -103,6 +104,28 @@ export class LocalVisitTracker implements VisitTracker {
         .map(([referrer, visits]) => ({ referrer, visits }))
         .toSorted((a, b) => b.visits - a.visits),
     };
+  }
+
+  /**
+   * The local store keeps country on the event itself, which the Blocks store
+   * deliberately does not -- this file is a development reference and its JSON
+   * never leaves the machine, so the day-granularity separation that protects
+   * real visitors is not needed here.
+   */
+  async getCountries(input: VisitMetricsQuery = {}): Promise<CountryCount[]> {
+    const events = await this.readEvents();
+    const totals = new Map<string, number>();
+    for (const event of events) {
+      if (input.pageSlug && event.pageSlug !== input.pageSlug) continue;
+      const day = event.timestamp.slice(0, 10);
+      if (input.startDate && day < input.startDate) continue;
+      if (input.endDate && day > input.endDate) continue;
+      const code = event.country ?? "ZZ";
+      totals.set(code, (totals.get(code) ?? 0) + 1);
+    }
+    return [...totals]
+      .map(([country, visits]) => ({ country, visits }))
+      .toSorted((a, b) => b.visits - a.visits || a.country.localeCompare(b.country));
   }
 
   async clear(): Promise<void> {

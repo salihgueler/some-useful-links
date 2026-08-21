@@ -3,6 +3,11 @@ import { analyticsOperations, createAnalyticsTable, type AnalyticsPoint } from "
 import { pageOperations } from "./page-operations";
 import { starterPage, starterSlug } from "./starter-page";
 import { createVisitsTable, visitOperations, type VisitEventType } from "./visits-table";
+import {
+  countryOperations,
+  createCountriesTable,
+  normalizeCountry,
+} from "./countries-table";
 import { createPagesTable } from "./pages-table";
 import {
   ALLOWED_EMAIL_DOMAINS,
@@ -29,6 +34,10 @@ const analytics = analyticsOperations(analyticsTable);
 /** Raw visit events with TTL retention; see visits-table.ts. */
 const visitsTable = createVisitsTable(scope);
 const visits = visitOperations(visitsTable);
+
+/** Day-granular visit origin; see countries-table.ts for why it is separate. */
+const countriesTable = createCountriesTable(scope);
+const countries = countryOperations(countriesTable);
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
@@ -245,7 +254,8 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
     await pages.renamePage(user.userSub, slug, nextSlug, page);
     const movedAggregates = await analytics.rename(user.userSub, slug, nextSlug);
     const movedEvents = await visits.rename(user.userSub, slug, nextSlug);
-    return { slug: nextSlug, movedAggregates, movedEvents };
+    const movedCountries = await countries.rename(user.userSub, slug, nextSlug);
+    return { slug: nextSlug, movedAggregates, movedEvents, movedCountries };
   },
 
   async deletePage(slug: string) {
@@ -335,6 +345,7 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
     type: VisitEventType,
     linkId?: string | null,
     referrer?: string | null,
+    country?: string | null,
   ) {
     // JSON-RPC positional params carry an absent value as null, and the record
     // schema accepts undefined but not null. Normalise before validating.
@@ -368,6 +379,9 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
       }
     }
     const { id } = await visits.track(ownerId, slug, { type, linkId: link, referrer: ref });
+    // Recorded separately and only to the day, so no country is ever paired with
+    // a visit's timestamp or linkId. Never receives an IP address.
+    await countries.record(ownerId, slug, normalizeCountry(country));
     return { ok: true, eventId: id };
   },
 
@@ -385,6 +399,23 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
       optionalString(startDate),
       optionalString(endDate),
     );
+  },
+
+  /** Visit counts per country for a date range, most visits first. */
+  async queryCountries(
+    slug: string,
+    startDate?: string | null,
+    endDate?: string | null,
+  ) {
+    const { user } = await requireEligible(context);
+    return {
+      countries: await countries.counts(
+        user.userSub,
+        slug,
+        optionalString(startDate),
+        optionalString(endDate),
+      ),
+    };
   },
 
   async clearVisits(slug: string) {

@@ -26,6 +26,23 @@ function referrerOrigin(raw: string | null): string | undefined {
   }
 }
 
+/**
+ * Visitor country, resolved by CloudFront at the edge.
+ *
+ * This is the whole reason no IP address is involved: CloudFront does the
+ * geo lookup and passes only a two-letter code, so the request's IP is never
+ * read for analytics and never stored. Anything that is not exactly two ASCII
+ * letters becomes ZZ, which also covers the case where the CDN is not
+ * forwarding the header at all -- the feature degrades to "Unknown" instead of
+ * failing, and it is never taken from the request body, so a caller cannot
+ * claim a country.
+ */
+function viewerCountry(request: NextRequest): string {
+  const raw = request.headers.get("cloudfront-viewer-country");
+  const value = (raw ?? "").trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(value) ? value : "ZZ";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const limit = rateLimit(
@@ -86,6 +103,7 @@ export async function POST(request: NextRequest) {
       referrer:
         referrerOrigin(typeof body.referrer === "string" ? body.referrer : null) ??
         referrerOrigin(request.headers.get("referer")),
+      country: viewerCountry(request),
     });
     return NextResponse.json({ ok: true, eventId: event.id }, { status: 201 });
   } catch (error) {

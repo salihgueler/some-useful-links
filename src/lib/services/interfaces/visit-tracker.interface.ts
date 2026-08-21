@@ -11,6 +11,11 @@ export interface TrackVisitInput {
    * no metric consumes it, and it is a fingerprinting surface.
    */
   referrer?: string;
+  /**
+   * ISO 3166-1 alpha-2, resolved by the CDN at the edge. "ZZ" when unknown.
+   * Stored day-granular and apart from the event; see countries-table.ts.
+   */
+  country?: string;
 }
 
 export interface VisitEvent extends TrackVisitInput {
@@ -22,6 +27,11 @@ export interface VisitMetricsQuery {
   pageSlug?: string;
   startDate?: string;
   endDate?: string;
+}
+
+export interface CountryCount {
+  country: string;
+  visits: number;
 }
 
 export interface VisitMetrics {
@@ -52,6 +62,9 @@ export interface VisitTracker {
 
   /** Returns totals, CTR, per-link counts, and top referrers for a date range. */
   getMetrics(input?: VisitMetricsQuery): Promise<VisitMetrics>;
+
+  /** Visit counts per country for a date range, most visits first. */
+  getCountries(input?: VisitMetricsQuery): Promise<CountryCount[]>;
 
   /** Removes all locally persisted raw events. */
   clear(): Promise<void>;
