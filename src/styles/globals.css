@@ -2699,3 +2699,168 @@ a {
   margin-top: 4px;
   margin-bottom: 8px;
 }
+
+/* ---------- Visits by country ----------
+   Country only, day-granular, no IP addresses. The map is an equirectangular
+   dot plot over a graticule rather than traced coastlines: honest geometry
+   instead of an approximated landmass. */
+.country-panel {
+  margin-top: 18px;
+  padding: 22px 24px 24px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.country-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.country-panel-head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.country-panel-head p {
+  margin: 5px 0 0;
+  max-width: 58ch;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.country-panel-head svg {
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.country-empty {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.country-body {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: start;
+  margin-top: 20px;
+}
+
+.country-map {
+  margin: 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--background);
+}
+
+.country-map svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.country-graticule line {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.country-dot circle {
+  fill: color-mix(in srgb, var(--primary) 26%, transparent);
+  stroke: var(--primary);
+  stroke-width: 1.25;
+}
+
+.country-dot .country-dot-core {
+  fill: var(--primary);
+  stroke: none;
+}
+
+.country-dot text {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.country-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.country-list li {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) 72px auto;
+  align-items: center;
+}
+
+.country-rank-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.country-rank-name code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--lavender);
+  color: #4b3f97;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.country-bar {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.country-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.country-figures {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.country-figures strong {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.country-figures small {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 880px) {
+  .country-body {
+    grid-template-columns: 1fr;
+  }
+}

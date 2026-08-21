@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { PublicError, errorResponse } from "@/lib/api/errors";
 import { requireOwnerApi } from "@/lib/auth/require-owner";
-import { analyticsStore } from "@/lib/services";
+import { analyticsStore, visitTracker } from "@/lib/services";
 
 function subtractDays(date: string, days: number) {
   const value = new Date(`${date}T00:00:00Z`);
@@ -42,7 +42,14 @@ export async function GET(request: NextRequest) {
         (params.get("aggregation") as "day" | "week" | "month" | null) ??
         "day",
     });
-    return NextResponse.json(report);
+    // Composed here rather than inside the analytics store: country lives in its
+    // own day-granular table, deliberately apart from the daily aggregates.
+    const countries = await visitTracker.getCountries({
+      pageSlug,
+      startDate: report.range.startDate || undefined,
+      endDate: report.range.endDate || undefined,
+    });
+    return NextResponse.json({ ...report, countries });
   } catch (error) {
     return errorResponse(error, "Analytics failed");
   }

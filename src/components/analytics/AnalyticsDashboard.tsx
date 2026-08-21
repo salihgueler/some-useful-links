@@ -13,6 +13,7 @@ import type { AnalyticsSummary } from "@/lib/services";
 import { ClickChart } from "./ClickChart";
 import { KPIPanel } from "./KPIPanel";
 import { LivePreview } from "./LivePreview";
+import { CountryPanel } from "./CountryPanel";
 import { SourceBars } from "./SourceBars";
 import { TopLinks } from "./TopLinks";
 
@@ -109,6 +110,8 @@ export function AnalyticsDashboard({
         <TopLinks rows={data.topLinks} links={links} />
         <SourceBars rows={data.referrers} />
       </section>
+
+      <CountryPanel countries={data.countries ?? []} />
     </div>
   );
 }
