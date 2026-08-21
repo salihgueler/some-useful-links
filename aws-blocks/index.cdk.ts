@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import { RemovalPolicies, Mixins } from 'aws-cdk-lib';
 
 import { Hosting, BlocksStack, SandboxDisableDeletionProtection } from '@aws-blocks/blocks/cdk';
+import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { getStackName } from '@aws-blocks/blocks/scripts';
@@ -39,5 +40,33 @@ if (!sandboxMode) {
       memorySize: 1024,
       timeout: 30,
     },
+    /**
+     * Custom domain, active only once HOSTING_CERTIFICATE_ARN is exported.
+     *
+     * BYO certificate rather than letting Hosting provision one: that path
+     * needs a Route 53 hosted zone, and this domain's DNS lives at Squarespace.
+     * The ARN must be an ACM certificate in us-east-1 (CloudFront's
+     * requirement; the construct rejects any other region) and it must cover
+     * BOTH names below, because Hosting creates its own certificate for the
+     * primary domain only and reuses it for the rest -- CloudFront refuses an
+     * alias the attached certificate does not cover.
+     *
+     * With no hostedZone/hostedZoneId, no Route 53 records are created: the
+     * apex is pointed with an ALIAS record at Squarespace instead, and DNSSEC
+     * has to be off there for ALIAS to be accepted.
+     */
+    ...(process.env.HOSTING_CERTIFICATE_ARN
+      ? {
+          domain: {
+            domainName: ['someusefullinks.com', 'www.someusefullinks.com'],
+            certificate: Certificate.fromCertificateArn(
+              blocksStack,
+              'HostingCertificate',
+              process.env.HOSTING_CERTIFICATE_ARN,
+            ),
+            wwwRedirect: 'toApex' as const,
+          },
+        }
+      : {}),
   });
 }
