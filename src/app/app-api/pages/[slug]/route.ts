@@ -14,12 +14,16 @@ export async function GET(
   } catch (error) {
     return errorResponse(error, "Not authorized");
   }
-  const { slug } = await params;
-  const page = await linkStore.getPage(slug);
-  if (!page) {
-    return NextResponse.json({ error: "Page not found" }, { status: 404 });
+  try {
+    const { slug } = await params;
+    const page = await linkStore.getPage(slug);
+    if (!page) {
+      return NextResponse.json({ error: "Page not found" }, { status: 404 });
+    }
+    return NextResponse.json(page);
+  } catch (error) {
+    return errorResponse(error, "Could not load the page");
   }
-  return NextResponse.json(page);
 }
 
 export async function PATCH(
