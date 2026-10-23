@@ -5,7 +5,7 @@
 Some Useful Links is a multi-owner link-sharing application built with Next.js
 App Router, React, strict TypeScript, and Tailwind CSS. Sign-up is open to any
 confirmed email address; collection pages stay public. Data lives
-in AWS Blocks (`aws-blocks/`) in three owner-partitioned DistributedTables.
+in AWS Blocks (`aws-blocks/`) in four owner-partitioned DistributedTables.
 
 Treat `README.md` as the product and setup reference, `DESIGN_SPEC.md` as the
 visual source of truth, and `src/lib/services/README.md` as the data-layer
@@ -41,6 +41,35 @@ The visual check expects Chrome at the macOS default path. Override the browser
 with `PLAYWRIGHT_CHROME_PATH` and the server with `BASE_URL` when needed. It
 writes screenshots to `/tmp`.
 
+For design review, `impeccable` is installed in-project. Always invoke the local
+binary, never `npx`:
+
+```bash
+./node_modules/.bin/impeccable detect http://127.0.0.1:3000/<path>
+```
+
+A clean run proves nothing on its own — confirm the tool is actually detecting
+by giving it a known-bad control page first, then re-run against the real
+surface.
+
+## Cloud And Deployment
+
+`npm run deploy`, `npm run destroy`, `npm run sandbox` and
+`npm run sandbox:destroy` create, mutate or delete real billable AWS resources
+in the account behind the active profile. Never run them on your own
+initiative — they are the user's call, and `destroy` is irreversible.
+
+Everything else is local: `dev`, `dev:api`, `build`, `lint`, `validate:links`,
+`spec`, `cleanup`, `sandbox:console`.
+
+The custom domain in `aws-blocks/index.cdk.ts` is gated on
+`HOSTING_CERTIFICATE_ARN` and must stay inert when that variable is unset, so a
+deploy without it behaves exactly as it did before the domain existed. If you
+change that block, verify all three states by synthesising: a us-east-1 ARN
+(aliases present), a wrong-region ARN (the guard throws), and unset (no aliases,
+null viewer certificate). The certificate must be in us-east-1 and must cover
+both the apex and `www`; see README for why.
+
 ## Architecture
 
 - `src/app`: App Router pages, layouts, route handlers, and API endpoints.
@@ -53,14 +82,15 @@ writes screenshots to `/tmp`.
 - `src/lib/services/local`: Original JSON implementations, kept as reference and
   NOT wired up.
 - `src/lib/services/index.ts`: The only provider registration and swap point.
-- `aws-blocks/`: Backend. Auth, the three tables, and the JSON-RPC API.
+- `aws-blocks/`: Backend. Auth, the four tables, the JSON-RPC API, and the CDK
+  stack definition in `index.cdk.ts`.
 - `src/styles/globals.css`: Shared styles and responsive behavior.
 - `public`: Static assets.
 
 `/` is a landing page and serves no collection. Public collection pages are
-`/:slug`. Admin routes under `/admin/:slug/*` and the `/api/pages` and
-`/api/analytics` handlers require a verified session; `/api/track` is public by
-design.
+`/:slug`. Admin routes under `/admin/:slug/*` and the `/app-api/pages` and
+`/app-api/analytics` handlers require a verified session; `/app-api/track` is
+public by design. Note the `app-api` prefix — there is no `/api/*` namespace.
 
 Reads split into public (no session, resolves the slug reservation) and
 owner-scoped (forwards the session; another owner's slug reads as absent). When
@@ -86,6 +116,12 @@ owner-scoped read breaks for anonymous visitors.
 - Use AWS Blocks building blocks; never raw AWS SDK calls.
 - Never accept an owner ID from request input -- derive it from the verified
   session. Never add a global scan for a user-visible operation.
+- Treat the tracking path as privacy-critical. Do not add an IP address, user
+  agent, full referrer URL, or any per-visitor identifier to `/app-api/track` or
+  the analytics tables, and do not move `country` onto the visit event -- the
+  separate `countries` table exists specifically so a country cannot be joined
+  to a timestamped, link-bearing visit. These omissions are the GDPR position; a
+  convenient extra field silently removes it.
 - Do not commit credentials. `.bb-data/` holds local mock auth data and is
   gitignored.
 - Keep unrelated refactors and generated-file churn out of focused changes.
@@ -104,8 +140,8 @@ shape and is enforced at runtime by `validatePageInput()`. When editing it:
 5. Keep `links.types.ts` and the schema aligned when changing data shape.
 6. Run `npm run validate:links`.
 
-The admin UI also persists page edits to this file through the local link
-store.
+`links.json` is a fixture only. The admin UI persists page edits to DynamoDB
+through the Blocks link store — nothing in the running app writes to this file.
 
 `src/lib/services/local/data/seed-data.json` is stable development seed data.
 `analytics.json` and `visits.json` are runtime files and are gitignored. Do not

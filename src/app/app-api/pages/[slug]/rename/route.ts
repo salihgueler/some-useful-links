@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { errorResponse } from "@/lib/api/errors";
 import { assertJsonBody, assertSameOrigin } from "@/lib/api/csrf";
 import { requireOwnerApi } from "@/lib/auth/require-owner";
+import { isReservedSlug } from "@/lib/config/reserved-slugs";
 import { validatePageInput } from "@/lib/config/links.validate";
 import { linkStore } from "@/lib/services";
 
@@ -33,6 +34,13 @@ export async function POST(
     if (!nextSlug || !slugPattern.test(nextSlug)) {
       return NextResponse.json(
         { error: "A URL-safe address of 2-48 characters is required" },
+        { status: 400 },
+      );
+    }
+    // Same shadowing rule as creation -- see reserved-slugs.ts.
+    if (isReservedSlug(nextSlug)) {
+      return NextResponse.json(
+        { error: `"${nextSlug}" is reserved by the app. Please choose another address.` },
         { status: 400 },
       );
     }

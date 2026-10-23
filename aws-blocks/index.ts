@@ -1,5 +1,14 @@
-import { ApiError, ApiNamespace, AuthCognito, Scope } from "@aws-blocks/blocks";
+import {
+  ApiError,
+  ApiNamespace,
+  AppSetting,
+  AuthCognito,
+  CronJob,
+  Scope,
+} from "@aws-blocks/blocks";
 import { analyticsOperations, createAnalyticsTable, type AnalyticsPoint } from "./analytics-table";
+import { appStatsOperations, createAppStatsTable } from "./app-stats-table";
+import { buildAppStats } from "./app-stats-rollup";
 import { pageOperations } from "./page-operations";
 import { starterPage, starterSlug } from "./starter-page";
 import { createVisitsTable, visitOperations, type VisitEventType } from "./visits-table";
@@ -37,6 +46,69 @@ const visits = visitOperations(visitsTable);
 /** Day-granular visit origin; see countries-table.ts for why it is separate. */
 const countriesTable = createCountriesTable(scope);
 const countries = countryOperations(countriesTable);
+
+/** Product-wide daily rollups for the operator view; see app-stats-table.ts. */
+const appStatsTable = createAppStatsTable(scope);
+const appStats = appStatsOperations(appStatsTable);
+
+/**
+ * The single account allowed to read app-wide statistics.
+ *
+ * Held as configuration rather than in source: it is a Cognito subject id, and
+ * committing account identifiers to the repository is exactly what the project
+ * rules forbid. The value is seeded at deploy time from OPERATOR_USER_SUB, the
+ * same pattern HOSTING_CERTIFICATE_ARN already uses, and can be changed later
+ * with put() without a redeploy.
+ *
+ * An unset variable becomes the empty string, which cannot equal any real
+ * Cognito sub -- so a deploy that forgets to configure it denies everyone
+ * rather than admitting anyone. The gate fails closed by construction.
+ */
+const operatorUserSub = new AppSetting(scope, "operatorUserSub", {
+  value: process.env.OPERATOR_USER_SUB ?? "",
+});
+
+/**
+ * Rebuilds the app-wide rollup nightly, at 00:10 Europe/Berlin.
+ *
+ * Off the hour on purpose: scheduled jobs cluster on exact hours, and the
+ * minute costs nothing. Expressed in a named timezone rather than a fixed UTC
+ * offset so it stays at local midnight across the CEST/CET switch instead of
+ * drifting by an hour twice a year.
+ *
+ * The handler rewrites a trailing window from source on every run, which is
+ * what makes it safe under EventBridge's at-least-once delivery -- a
+ * redelivered invocation recomputes the same numbers instead of double-counting
+ * them. It also means a day that was still in progress at run time is corrected
+ * by the following night's run.
+ */
+new CronJob(scope, "appStatsRollup", {
+  schedule: "cron(10 0 * * ? *)",
+  timezone: "Europe/Berlin",
+  description: "Aggregate per-owner analytics into app-wide daily totals",
+  handler: async () => {
+    // Existing rows are read first so earlier dates keep the totals they
+    // recorded at the time; only today's row takes this run's snapshot.
+    const existing = await appStats.range();
+    const priorTotals = new Map(
+      existing.map((day) => [
+        day.date,
+        { totalOwners: day.totalOwners, totalPages: day.totalPages },
+      ]),
+    );
+
+    const days = await buildAppStats(
+      analyticsTable,
+      visitsTable,
+      pagesTable,
+      priorTotals,
+    );
+    for (const day of days) {
+      await appStats.putDay(day);
+    }
+  },
+});
+
 const isProduction = process.env.NODE_ENV === "production";
 
 /**
@@ -135,6 +207,27 @@ async function requireEligible(context: RequestContext) {
     throw notEligible();
   }
   return { user, email };
+}
+
+/**
+ * Authorization for the app-wide operator view.
+ *
+ * A second, narrower tier on top of requireEligible: every eligible user is an
+ * owner of their own collections, but exactly one account may read numbers that
+ * span all owners. Enforced here, at the data boundary, rather than in the page
+ * -- so the RPC method cannot be reached directly even by someone who knows the
+ * route exists.
+ *
+ * Reports "not found" rather than "forbidden" deliberately: a 403 confirms
+ * there is an operator surface to attack, a 404 says nothing at all.
+ */
+async function requireOperator(context: RequestContext) {
+  const { user } = await requireEligible(context);
+  const operator = await operatorUserSub.get();
+  if (!operator || user.userSub !== operator) {
+    throw new ApiError("Not found", 404, { name: "NotFound" });
+  }
+  return { user };
 }
 
 /**
@@ -414,5 +507,26 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
   async clearVisits(slug: string) {
     const { user } = await requireEligible(context);
     return { cleared: await visits.clear(user.userSub, slug) };
+  },
+
+  // ---- Operator-only: the whole app ---------------------------------------
+
+  /**
+   * App-wide daily totals across every owner, for the single operator account.
+   *
+   * Reads the nightly rollup, so this is one query against one partition -- the
+   * cross-owner scan happens in the CronJob, never here. Numbers can therefore
+   * be up to a day stale, which is the intended trade: a product-level view
+   * does not need to be live, and paying for a scan per page load would be
+   * absurd.
+   */
+  async appStats(startDate?: string | null, endDate?: string | null) {
+    await requireOperator(context);
+    return {
+      days: await appStats.range(
+        optionalString(startDate),
+        optionalString(endDate),
+      ),
+    };
   },
 }));
