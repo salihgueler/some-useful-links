@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/layout/LogoMark";
-import { ALLOWED_EMAIL_DOMAINS } from "@blocks/eligibility";
 import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -60,8 +59,8 @@ export default async function HomePage() {
           <div>
             <dt>Readable by anyone</dt>
             <dd>
-              Accounts are limited to {ALLOWED_EMAIL_DOMAINS.join(", ")}. The
-              pages you publish need no account at all.
+              Anyone with an email address can sign up. The pages you publish
+              need no account at all.
             </dd>
           </div>
         </dl>

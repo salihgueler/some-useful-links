@@ -10,7 +10,6 @@ import {
 } from "./countries-table";
 import { createPagesTable } from "./pages-table";
 import {
-  ALLOWED_EMAIL_DOMAINS,
   NotEligibleError,
   assertEligibleEmail,
   isEligibleEmail,
@@ -45,8 +44,8 @@ const isProduction = process.env.NODE_ENV === "production";
  *
  * signInWith: 'email' is a ONE-WAY DOOR. Cognito rejects the alias-shape
  * transition, so changing it later requires recreating the pool and every
- * account in it. It is correct here because eligibility is decided by email
- * domain.
+ * account in it. It is correct here because every account is identified by a
+ * confirmed email address.
  */
 const auth = new AuthCognito(scope, "auth", {
   signInWith: "email",
@@ -64,8 +63,8 @@ const auth = new AuthCognito(scope, "auth", {
     requireUppercase: true,
     requireLowercase: true,
   },
-  // Shorter than the 400-day default: without corporate SSO there is no
-  // offboarding signal, so sessions should not outlive employment for long.
+  // Shorter than the 400-day default, so a leaked or forgotten session on a
+  // shared device stops working within a day.
   sessionTtlSeconds: 60 * 60 * 12,
   // Local mock only: surface confirmation codes in the dev server log so
   // sign-up can be exercised without an email provider. Never in production.
@@ -88,7 +87,7 @@ type RequestContext = Parameters<typeof auth.requireAuth>[0];
  * eligibility.ts stays framework-free so it can be reasoned about and tested
  * on its own; the HTTP status is applied here at the API boundary.
  */
-function notEligible(message = "This email address is not eligible for an account") {
+function notEligible(message = "Enter a valid email address") {
   return new ApiError(message, 403, { name: "NotEligible" });
 }
 
@@ -121,11 +120,10 @@ function referrerOrigin(raw: string | null | undefined): string | undefined {
 }
 
 /**
- * Authenticated AND still eligible.
+ * Authenticated AND holding a confirmed, well-formed email address.
  *
- * The domain is re-checked on every call rather than trusted from sign-up,
- * so an account created out of band, an address changed after the fact, or a
- * domain later removed from the allowlist all lose access immediately.
+ * Checked on every call rather than trusted from sign-up, so an account
+ * created out of band or with an unconfirmed address cannot act as an owner.
  */
 async function requireEligible(context: RequestContext) {
   const user = await auth.requireAuth(context);
@@ -143,18 +141,13 @@ async function requireEligible(context: RequestContext) {
  * Every ApiNamespace method is a PUBLIC RPC endpoint by default.
  *
  * The raw auth state machine (auth.createApi()) is deliberately NOT exported:
- * it exposes signUp directly to the browser, which would bypass the domain
- * allowlist below. Sign-up must go through this namespace.
+ * it exposes every auth operation directly to the browser, which would bypass
+ * the address normalisation below. Sign-up must go through this namespace.
  */
 export const api = new ApiNamespace(scope, "api", (context) => ({
   /** Liveness probe. */
   async health() {
     return { ok: true, service: "some-useful-links" };
-  },
-
-  /** Which domains may register, so the UI can say so before submission. */
-  async eligibleDomains() {
-    return { domains: ALLOWED_EMAIL_DOMAINS };
   },
 
   async signUp(email: string, password: string) {
@@ -186,8 +179,8 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
    *
    * The block deliberately never reveals whether the account exists, so that
    * this endpoint cannot be used to enumerate addresses. This wrapper preserves
-   * that: the only thing it will refuse is an INELIGIBLE DOMAIN, which is a
-   * statement about the address itself and discloses nothing about accounts.
+   * that: the only thing it will refuse is a MALFORMED ADDRESS, which is a
+   * statement about the input itself and discloses nothing about accounts.
    */
   async resetPassword(email: string) {
     const result = await auth.resetPassword(eligibleOrThrow(email));
@@ -209,7 +202,7 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
     return { ok: true };
   },
 
-  /** Current identity, or 401/403 if not signed in or no longer eligible. */
+  /** Current identity, or 401/403 if not signed in or not confirmed. */
   async me() {
     const { user, email } = await requireEligible(context);
     return { email, userSub: user.userSub };

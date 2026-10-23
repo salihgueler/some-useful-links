@@ -1,35 +1,26 @@
 /**
- * Sign-up eligibility: only Amazon corporate email addresses may hold accounts.
+ * Sign-up eligibility: any address with a plausible email shape may hold an
+ * account. There is no domain allowlist.
  *
  * Public link pages stay readable by anyone; this gates account creation and
  * every owner-scoped operation.
  *
- * The allowlist is an EXACT set of full domains, deliberately not a pattern:
- *   - `endsWith("amazon.com")`     would admit `evil-amazon.com`
- *   - `includes("amazon.")`        would admit `amazon.attacker.net`
- *   - `amazon.<second>.<tld>`      would admit `amazon.evil.com`, a subdomain
- *                                  anyone owning evil.com can create
- *   - `amazon.<anyTld>`            would admit any TLD Amazon has not
- *                                  defensively registered
- *
- * Note what this check is and is not. It decides who may ATTEMPT to hold an
- * account. Proof that the address is real comes from Cognito's email
- * confirmation code, which is the actual control. Both are required.
+ * This check only rejects input that cannot be an email address, so obvious
+ * garbage fails fast with a clear error instead of a Cognito exception. Proof
+ * that the address is real, and belongs to the person signing up, comes from
+ * Cognito's email confirmation code. That code is the actual control.
  */
 
-export const ALLOWED_EMAIL_DOMAINS: readonly string[] = [
-  "amazon.com",
-  "amazon.co.uk",
-  "amazon.de",
-  "amazon.fr",
-];
-
-/** ASCII only, so punycode and Unicode lookalikes of "amazon" cannot pass. */
-const LOCAL_PART = /^[a-z0-9](?:[a-z0-9._%+-]{0,62}[a-z0-9])?$/;
-const DOMAIN = /^[a-z0-9.-]+$/;
+/** Anything except whitespace and "@"; RFC 5321 caps the local part at 64. */
+const LOCAL_PART = /^[^\s@]{1,64}$/;
+/**
+ * Dot-separated labels of letters, digits and hyphens, with at least one dot.
+ * Internationalised domains arrive as punycode (xn--...), which this accepts.
+ */
+const DOMAIN = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9-]{2,63}$/;
 
 export class NotEligibleError extends Error {
-  constructor(message = "This email address is not eligible for an account") {
+  constructor(message = "Enter a valid email address") {
     super(message);
     this.name = "NotEligibleError";
   }
@@ -47,15 +38,7 @@ export function isEligibleEmail(candidate: string): boolean {
   const at = email.lastIndexOf("@");
   if (at < 1 || at === email.length - 1) return false;
 
-  const local = email.slice(0, at);
-  const domain = email.slice(at + 1);
-
-  if (!LOCAL_PART.test(local)) return false;
-  if (!DOMAIN.test(domain)) return false;
-
-  // Exact membership. A subdomain such as eu.amazon.com does not match unless
-  // it is listed explicitly.
-  return ALLOWED_EMAIL_DOMAINS.includes(domain);
+  return LOCAL_PART.test(email.slice(0, at)) && DOMAIN.test(email.slice(at + 1));
 }
 
 /** Returns the normalised address, or throws NotEligibleError. */

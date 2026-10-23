@@ -22,7 +22,7 @@
     "cleanup": "tsx aws-blocks/scripts/cleanup.ts"
   },
   "dependencies": {
-    "@aws-blocks/blocks": "0.2.7",
+    "@aws-blocks/blocks": "0.8.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "lucide-react": "^0.468.0",

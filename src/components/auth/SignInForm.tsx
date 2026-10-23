@@ -22,7 +22,7 @@ const ACTIONS: Record<Mode, string> = {
   resetConfirm: "Set new password",
 };
 
-export function SignInForm({ domains }: { domains: readonly string[] }) {
+export function SignInForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("signIn");
   const [email, setEmail] = useState("");
@@ -46,7 +46,7 @@ export function SignInForm({ domains }: { domains: readonly string[] }) {
       case "resetConfirm":
         return `Enter the code sent to ${email} and choose a new password.`;
       default:
-        return `Accounts are limited to Amazon corporate email addresses (${domains.join(", ")}). Public link pages stay readable by everyone.`;
+        return "Anyone with an email address can create an account. Public link pages stay readable by everyone.";
     }
   };
 
@@ -121,7 +121,7 @@ export function SignInForm({ domains }: { domains: readonly string[] }) {
       <p className="status-description">{description()}</p>
       <form className="auth-form" onSubmit={submit}>
         <label className="field">
-          <span>Work email</span>
+          <span>Email</span>
           <input
             autoComplete="username"
             disabled={busy || showCode}

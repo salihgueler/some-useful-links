@@ -3,8 +3,8 @@
 ## Project Overview
 
 Some Useful Links is a multi-owner link-sharing application built with Next.js
-App Router, React, strict TypeScript, and Tailwind CSS. Accounts are restricted
-to an Amazon corporate email allowlist; collection pages stay public. Data lives
+App Router, React, strict TypeScript, and Tailwind CSS. Sign-up is open to any
+confirmed email address; collection pages stay public. Data lives
 in AWS Blocks (`aws-blocks/`) in three owner-partitioned DistributedTables.
 
 Treat `README.md` as the product and setup reference, `DESIGN_SPEC.md` as the

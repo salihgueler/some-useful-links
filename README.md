@@ -4,7 +4,7 @@ A multi-owner, LinkTree-style Next.js application. Each signed-in owner keeps
 their own collections; every collection has its own slug, links, appearance,
 analytics and public share card.
 
-Accounts are restricted to Amazon corporate email addresses. Collection pages
+Anyone with an email address can create an account. Collection pages
 themselves are public: anyone with the link can open one.
 
 ## Setup
@@ -53,16 +53,13 @@ so claiming one that is taken fails with 409.
 
 ## Accounts
 
-Sign-up is limited to an exact allowlist of domains in
-`aws-blocks/eligibility.ts` — currently `amazon.com`, `amazon.co.uk`,
-`amazon.de` and `amazon.fr`. It is an exact full-domain match on purpose: a
-suffix or pattern check would admit `evil-amazon.com` or `amazon.evil.com`.
+Sign-up is open to any email address. `aws-blocks/eligibility.ts` only rejects
+input that cannot be an address, so malformed input fails with a clear error.
 
-The domain check decides who may *attempt* to hold an account. The real control
-is the emailed confirmation code, which proves the address exists. Both are
-required. The domain is re-checked on every authenticated call, so an account
-created out of band, or a domain later removed from the list, loses access
-immediately.
+The real control is the emailed confirmation code, which proves the person
+signing up owns the address. Every authenticated call re-checks that the
+account's address is confirmed, so an account created out of band without
+confirmation cannot act as an owner.
 
 In local development the confirmation code is printed to the dev server log and
 written to `.bb-data/some-useful-links-auth/last-code.json`; no email provider
