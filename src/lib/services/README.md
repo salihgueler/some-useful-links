@@ -70,7 +70,7 @@ Every event requires `pageSlug`. Click events also require `linkId`.
 4. Change only the relevant constructor import in `src/lib/services/index.ts`.
 5. Import `seed-data.json` if initial analytics history is needed.
 6. Run `npm run validate:links`, `npm run lint`, and `npm run build`.
-7. Exercise `/api/pages`, `/api/track`, and `/api/analytics`.
+7. Exercise `/app-api/pages`, `/app-api/track`, and `/app-api/analytics`.
 
 ## Provider Hints
 

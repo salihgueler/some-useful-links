@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
+import { PublicError } from "@/lib/api/errors";
 import { join } from "node:path";
 import type {
   LinkConfiguration,
@@ -21,15 +22,15 @@ function clonePage(page: PageConfiguration): PageConfiguration {
 }
 
 function assertPage(page: PageConfiguration): void {
-  if (!slugPattern.test(page.slug)) throw new Error("Invalid page slug");
-  if (!page.meta.title.trim()) throw new Error("Page title is required");
-  if (page.meta.subtitle.length > 80) throw new Error("Subtitle is too long");
+  if (!slugPattern.test(page.slug)) throw new PublicError("Invalid page slug");
+  if (!page.meta.title.trim()) throw new PublicError("Page title is required");
+  if (page.meta.subtitle.length > 80) throw new PublicError("Subtitle is too long");
   if (page.links.length < 1 || page.links.length > 20) {
-    throw new Error("A page must have between 1 and 20 links");
+    throw new PublicError("A page must have between 1 and 20 links");
   }
   const ids = page.links.map((link) => link.id);
   if (new Set(ids).size !== ids.length) {
-    throw new Error("Link IDs must be unique within a page");
+    throw new PublicError("Link IDs must be unique within a page");
   }
   const colors = [
     page.appearance.primaryColor,
@@ -39,7 +40,7 @@ function assertPage(page: PageConfiguration): void {
     page.appearance.logoColor,
   ];
   if (colors.some((color) => !colorPattern.test(color))) {
-    throw new Error("Appearance colors must be six-digit hex values");
+    throw new PublicError("Appearance colors must be six-digit hex values");
   }
   new URL(page.meta.url);
   for (const link of page.links) new URL(link.url);
@@ -85,7 +86,7 @@ export class LocalLinkStore implements LinkStore {
 
   async getEnabledLinks(slug?: string): Promise<LinkStoreSnapshot> {
     const page = slug ? await this.getPage(slug) : await this.getDefaultPage();
-    if (!page) throw new Error(`Page "${slug}" was not found`);
+    if (!page) throw new PublicError(`Page "${slug}" was not found`, 404);
     const links = page.links
       .map((link, arrayIndex) => ({ link, arrayIndex }))
       .filter(({ link }) => link.enabled !== false)
@@ -107,7 +108,7 @@ export class LocalLinkStore implements LinkStore {
     assertPage(page);
     const config = await this.getConfiguration();
     if (config.pages.some((candidate) => candidate.slug === page.slug)) {
-      throw new Error(`Page "${page.slug}" already exists`);
+      throw new PublicError(`Page "${page.slug}" already exists`);
     }
     config.pages.push(clonePage(page));
     await this.writeConfiguration(config);
@@ -118,12 +119,34 @@ export class LocalLinkStore implements LinkStore {
     slug: string,
     page: PageConfiguration,
   ): Promise<PageConfiguration> {
-    if (slug !== page.slug) throw new Error("A page slug cannot be changed");
+    if (slug !== page.slug) throw new PublicError("A page slug cannot be changed");
     assertPage(page);
     const config = await this.getConfiguration();
     const index = config.pages.findIndex((candidate) => candidate.slug === slug);
-    if (index < 0) throw new Error(`Page "${slug}" was not found`);
+    if (index < 0) throw new PublicError(`Page "${slug}" was not found`, 404);
     config.pages[index] = clonePage(page);
+    await this.writeConfiguration(config);
+    return clonePage(page);
+  }
+
+  async renamePage(
+    slug: string,
+    nextSlug: string,
+    page: PageConfiguration,
+  ): Promise<PageConfiguration> {
+    if (page.slug !== nextSlug) {
+      throw new PublicError("The page body must carry the new slug");
+    }
+    assertPage(page);
+    const config = await this.getConfiguration();
+    const index = config.pages.findIndex((candidate) => candidate.slug === slug);
+    if (index < 0) throw new PublicError(`Page "${slug}" was not found`, 404);
+    if (config.pages.some((candidate) => candidate.slug === nextSlug)) {
+      throw new PublicError(`The slug "${nextSlug}" is already taken`);
+    }
+    config.pages[index] = clonePage(page);
+    // Follow the rename so the default does not point at a slug that is gone.
+    if (config.defaultSlug === slug) config.defaultSlug = nextSlug;
     await this.writeConfiguration(config);
     return clonePage(page);
   }
@@ -131,7 +154,7 @@ export class LocalLinkStore implements LinkStore {
   async deletePage(slug: string): Promise<boolean> {
     const config = await this.getConfiguration();
     if (config.defaultSlug === slug) {
-      throw new Error("The default page cannot be deleted");
+      throw new PublicError("The default page cannot be deleted");
     }
     const nextPages = config.pages.filter((page) => page.slug !== slug);
     if (nextPages.length === config.pages.length) return false;

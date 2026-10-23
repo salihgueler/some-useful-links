@@ -13,12 +13,12 @@ function trackClick(pageSlug: string, linkId: string) {
   const body = JSON.stringify({ type: "link-click", pageSlug, linkId });
   if (navigator.sendBeacon) {
     navigator.sendBeacon(
-      "/api/track",
+      "/app-api/track",
       new Blob([body], { type: "application/json" }),
     );
     return;
   }
-  void fetch("/api/track", {
+  void fetch("/app-api/track", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body,

@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type {
+  CountryCount,
   TrackVisitInput,
   VisitEvent,
   VisitMetrics,
@@ -16,6 +17,9 @@ const visitsPath = join(
 
 // Serializing writes prevents overlapping local API requests from losing data.
 let pendingWrite = Promise.resolve();
+
+/** Retention cap for the local mock; the cloud store should use a TTL instead. */
+const MAX_STORED_EVENTS = 50_000;
 
 export class LocalVisitTracker implements VisitTracker {
   private async readEvents(): Promise<VisitEvent[]> {
@@ -35,17 +39,27 @@ export class LocalVisitTracker implements VisitTracker {
       throw new Error("linkId is required for link-click events");
     }
 
+    // Built field by field rather than spreading input, so a caller cannot
+    // persist unknown properties or choose its own timestamp.
     const event: VisitEvent = {
-      ...input,
       id: randomUUID(),
-      timestamp: input.timestamp ?? new Date().toISOString(),
+      type: input.type,
+      pageSlug: input.pageSlug,
+      linkId: input.linkId,
+      referrer: input.referrer,
+      timestamp: new Date().toISOString(),
     };
 
     pendingWrite = pendingWrite.then(async () => {
       const events = await this.readEvents();
       events.push(event);
+      // Bound the file: an append-only mock is otherwise unbounded growth.
+      const retained =
+        events.length > MAX_STORED_EVENTS
+          ? events.slice(events.length - MAX_STORED_EVENTS)
+          : events;
       await mkdir(dirname(visitsPath), { recursive: true });
-      await writeFile(visitsPath, `${JSON.stringify(events, null, 2)}\n`, "utf8");
+      await writeFile(visitsPath, `${JSON.stringify(retained, null, 2)}\n`, "utf8");
     });
     await pendingWrite;
     return event;
@@ -90,6 +104,28 @@ export class LocalVisitTracker implements VisitTracker {
         .map(([referrer, visits]) => ({ referrer, visits }))
         .toSorted((a, b) => b.visits - a.visits),
     };
+  }
+
+  /**
+   * The local store keeps country on the event itself, which the Blocks store
+   * deliberately does not -- this file is a development reference and its JSON
+   * never leaves the machine, so the day-granularity separation that protects
+   * real visitors is not needed here.
+   */
+  async getCountries(input: VisitMetricsQuery = {}): Promise<CountryCount[]> {
+    const events = await this.readEvents();
+    const totals = new Map<string, number>();
+    for (const event of events) {
+      if (input.pageSlug && event.pageSlug !== input.pageSlug) continue;
+      const day = event.timestamp.slice(0, 10);
+      if (input.startDate && day < input.startDate) continue;
+      if (input.endDate && day > input.endDate) continue;
+      const code = event.country ?? "ZZ";
+      totals.set(code, (totals.get(code) ?? 0) + 1);
+    }
+    return [...totals]
+      .map(([country, visits]) => ({ country, visits }))
+      .toSorted((a, b) => b.visits - a.visits || a.country.localeCompare(b.country));
   }
 
   async clear(): Promise<void> {

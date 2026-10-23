@@ -13,6 +13,7 @@ import type { AnalyticsSummary } from "@/lib/services";
 import { ClickChart } from "./ClickChart";
 import { KPIPanel } from "./KPIPanel";
 import { LivePreview } from "./LivePreview";
+import { CountryPanel } from "./CountryPanel";
 import { SourceBars } from "./SourceBars";
 import { TopLinks } from "./TopLinks";
 
@@ -35,7 +36,7 @@ export function AnalyticsDashboard({
   const changeRange = (range: string) => {
     startTransition(async () => {
       const response = await fetch(
-        `/api/analytics?range=${range}&pageSlug=${encodeURIComponent(pageSlug)}`,
+        `/app-api/analytics?range=${range}&pageSlug=${encodeURIComponent(pageSlug)}`,
       );
       if (!response.ok) return;
       setData((await response.json()) as AnalyticsSummary);
@@ -109,6 +110,8 @@ export function AnalyticsDashboard({
         <TopLinks rows={data.topLinks} links={links} />
         <SourceBars rows={data.referrers} />
       </section>
+
+      <CountryPanel countries={data.countries ?? []} />
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { AdminPageSwitcher } from "@/components/layout/AdminPageSwitcher";
 import { LogoMark } from "@/components/layout/LogoMark";
 import { NavTabs } from "@/components/layout/NavTabs";
 import { linkStore } from "@/lib/services";
+import { AccountMenu } from "@/components/auth/AccountMenu";
+import { requireOwnerPage } from "@/lib/auth/require-owner";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +16,7 @@ export default async function PageAdminLayout({
   children: React.ReactNode;
   params: Promise<{ slug: string }>;
 }>) {
+  const session = await requireOwnerPage();
   const { slug } = await params;
   const [page, pages] = await Promise.all([
     linkStore.getPage(slug),
@@ -32,10 +35,10 @@ export default async function PageAdminLayout({
         <AdminPageSwitcher pages={pages} activeSlug={slug} />
         <NavTabs slug={slug} />
         <div className="admin-actions">
-          <Link href={livePath} target="_blank">
+          <Link href={livePath} rel="noreferrer" target="_blank">
             View live page
           </Link>
-          <span aria-label="Signed in as MS">MS</span>
+          <AccountMenu email={session.email} />
         </div>
       </header>
       <main className="admin-main">{children}</main>

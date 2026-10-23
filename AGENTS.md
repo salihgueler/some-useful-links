@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-Some Useful Links is a local-first, multi-page link-sharing application built
-with Next.js App Router, React, strict TypeScript, and Tailwind CSS. Public
-pages, admin tools, analytics, and share-card generation all run without cloud
-infrastructure.
+Some Useful Links is a multi-owner link-sharing application built with Next.js
+App Router, React, strict TypeScript, and Tailwind CSS. Sign-up is open to any
+confirmed email address; collection pages stay public. Data lives
+in AWS Blocks (`aws-blocks/`) in three owner-partitioned DistributedTables.
 
 Treat `README.md` as the product and setup reference, `DESIGN_SPEC.md` as the
 visual source of truth, and `src/lib/services/README.md` as the data-layer
@@ -15,14 +15,16 @@ contract.
 
 ```bash
 npm install
-npm run dev
+npm run dev:api        # Blocks server on :3000, fronts Next on :3100
 npm run validate:links
 npm run lint
 npm run build
 ```
 
-- `npm run dev` starts Next.js on `http://localhost:3000` and validates link
-  configuration first.
+- `npm run dev:api` is the entry point for anything involving sign-in: it serves
+  the API and the app on ONE origin, which the session cookie requires.
+- `npm run dev` starts Next alone. The UI renders but every API call fails, so
+  use it only for isolated UI work.
 - `npm run validate:links` validates `src/lib/config/links.json` against its
   schema and checks page/link uniqueness.
 - `npm run lint` runs the strict TypeScript check. There is no separate ESLint
@@ -47,14 +49,23 @@ writes screenshots to `/tmp`.
 - `src/lib/config`: Page configuration, JSON Schema, and matching TypeScript
   types.
 - `src/lib/services/interfaces`: Backend-neutral service contracts.
-- `src/lib/services/local`: Local JSON-backed implementations.
+- `src/lib/services/blocks`: Active AWS Blocks implementations.
+- `src/lib/services/local`: Original JSON implementations, kept as reference and
+  NOT wired up.
 - `src/lib/services/index.ts`: The only provider registration and swap point.
+- `aws-blocks/`: Backend. Auth, the three tables, and the JSON-RPC API.
 - `src/styles/globals.css`: Shared styles and responsive behavior.
 - `public`: Static assets.
 
-Public routes are `/` and `/:slug`. Page-scoped admin routes live under
-`/admin/:slug/*`. API handlers live under `/api/pages`, `/api/analytics`, and
-`/api/track`.
+`/` is a landing page and serves no collection. Public collection pages are
+`/:slug`. Admin routes under `/admin/:slug/*` and the `/api/pages` and
+`/api/analytics` handlers require a verified session; `/api/track` is public by
+design.
+
+Reads split into public (no session, resolves the slug reservation) and
+owner-scoped (forwards the session; another owner's slug reads as absent). When
+touching a data path, keep that split — a public route that calls an
+owner-scoped read breaks for anonymous visitors.
 
 ## Implementation Rules
 
@@ -72,14 +83,19 @@ Public routes are `/` and `/:slug`. Page-scoped admin routes live under
   primitives or hand-drawn SVG controls.
 - Preserve accessible names, visible focus states, keyboard operation, and
   reduced-motion behavior.
-- Do not add cloud SDKs, deployment configuration, external persistence, or
-  source-controlled credentials unless the task explicitly requires them.
+- Use AWS Blocks building blocks; never raw AWS SDK calls.
+- Never accept an owner ID from request input -- derive it from the verified
+  session. Never add a global scan for a user-visible operation.
+- Do not commit credentials. `.bb-data/` holds local mock auth data and is
+  gitignored.
 - Keep unrelated refactors and generated-file churn out of focused changes.
 
 ## Configuration And Data
 
-`src/lib/config/links.json` is source-controlled application data. When editing
-it:
+`src/lib/config/links.json` is NO LONGER runtime data -- collections live in
+DynamoDB via Blocks. It remains the fixture that `npm run validate:links` checks
+against `links.schema.json`, which is still the single source of truth for page
+shape and is enforced at runtime by `validatePageInput()`. When editing it:
 
 1. Keep the `$schema` reference.
 2. Keep page slugs globally unique.

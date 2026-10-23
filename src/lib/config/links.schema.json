@@ -73,6 +73,26 @@
         "avatar": {
           "type": "string",
           "default": "/avatar.svg"
+        },
+        "badge": {
+          "type": "string",
+          "maxLength": 28,
+          "description": "Small label under the header. Empty or absent hides it entirely."
+        },
+        "shareCaption": {
+          "type": "string",
+          "maxLength": 24,
+          "description": "Small label beside the share-card QR code."
+        },
+        "shareNote": {
+          "type": "string",
+          "maxLength": 44,
+          "description": "Line under the share-card caption. Defaults to the live link count."
+        },
+        "logo": {
+          "type": "string",
+          "maxLength": 262144,
+          "description": "Optional conference logo as a raster data URL. Validated in links.validate.ts: image/png, image/jpeg, image/webp or image/gif only, never SVG."
         }
       },
       "additionalProperties": false
@@ -93,6 +113,8 @@
         "backgroundColor": { "$ref": "#/$defs/color" },
         "accentColor": { "$ref": "#/$defs/color" },
         "logoColor": { "$ref": "#/$defs/color" },
+        "inkColor": { "$ref": "#/$defs/color" },
+        "badgeColor": { "$ref": "#/$defs/color" },
         "buttonStyle": {
           "type": "string",
           "enum": ["raised", "flat", "outline"]

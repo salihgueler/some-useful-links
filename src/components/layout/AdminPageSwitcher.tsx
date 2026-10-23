@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import type { PageSummary } from "@/lib/config/links.types";
 import { Modal } from "@/components/ui/Modal";
+import { requestNavigation } from "@/lib/unsaved";
 
 function toSlug(value: string) {
   return value
@@ -30,17 +31,44 @@ export function AdminPageSwitcher({
   const [slugEdited, setSlugEdited] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const section = pathname.split("/").at(-1) || "links";
 
+  const active = pages.find((page) => page.slug === activeSlug);
+  const isOnlyCollection = pages.length <= 1;
+
   const changePage = (nextSlug: string) => {
-    router.push(`/admin/${nextSlug}/${section}`);
+    const destination = `/admin/${nextSlug}/${section}`;
+    // An editor with unsaved changes takes over: this is not an anchor, so the
+    // guard's click listener cannot see it.
+    if (requestNavigation(destination)) return;
+    router.push(destination);
+  };
+
+  const deletePage = async () => {
+    setDeleting(true);
+    setDeleteError("");
+    const response = await fetch(`/app-api/pages/${activeSlug}`, { method: "DELETE" });
+    const result = (await response.json().catch(() => ({}))) as { error?: string };
+    setDeleting(false);
+    if (!response.ok) {
+      setDeleteError(result.error ?? "Could not delete this collection");
+      return;
+    }
+    setConfirmingDelete(false);
+    // Land on a collection that still exists rather than the one just removed.
+    const remaining = pages.find((page) => page.slug !== activeSlug);
+    router.push(remaining ? `/admin/${remaining.slug}/${section}` : "/admin");
+    router.refresh();
   };
 
   const createPage = async (event: React.FormEvent) => {
     event.preventDefault();
     setSaving(true);
     setError("");
-    const response = await fetch("/api/pages", {
+    const response = await fetch("/app-api/pages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, slug }),
@@ -80,6 +108,60 @@ export function AdminPageSwitcher({
       >
         <Plus size={18} />
       </button>
+      <button
+        type="button"
+        className="danger-icon"
+        aria-label="Delete this collection"
+        title={
+          isOnlyCollection
+            ? "You cannot delete your only collection"
+            : "Delete this collection"
+        }
+        disabled={isOnlyCollection}
+        onClick={() => {
+          setDeleteError("");
+          setConfirmingDelete(true);
+        }}
+      >
+        <Trash2 size={18} />
+      </button>
+
+      <Modal
+        open={confirmingDelete}
+        titleId="delete-page-title"
+        onClose={() => setConfirmingDelete(false)}
+      >
+        <div className="create-page-form">
+          <header>
+            <div>
+              <p className="eyebrow">Delete collection</p>
+              <h2 id="delete-page-title">Delete “{active?.title ?? activeSlug}”?</h2>
+            </div>
+            <button
+              type="button"
+              className="icon-command"
+              aria-label="Close"
+              onClick={() => setConfirmingDelete(false)}
+            >
+              <X size={19} />
+            </button>
+          </header>
+          <p className="status-description">
+            This removes the collection, its links and its analytics history.{" "}
+            <strong>/{activeSlug}</strong> stops resolving, so any shared link or QR
+            code pointing at it will break. This cannot be undone.
+          </p>
+          {deleteError ? <p className="form-error">{deleteError}</p> : null}
+          <button
+            type="button"
+            className="primary-action form-submit"
+            disabled={deleting}
+            onClick={deletePage}
+          >
+            {deleting ? "Deleting..." : "Delete permanently"}
+          </button>
+        </div>
+      </Modal>
 
       <Modal open={open} titleId="new-page-title" onClose={() => setOpen(false)}>
         <form className="create-page-form" onSubmit={createPage}>

@@ -4,9 +4,18 @@ export interface TrackVisitInput {
   type: VisitEventType;
   pageSlug: string;
   linkId?: string;
-  timestamp?: string;
+  /**
+   * Referring origin only, never a full URL: query strings can carry tokens.
+   * There is deliberately no timestamp field -- the store owns it, so a caller
+   * cannot backdate or forward-date an event. The user agent is not recorded:
+   * no metric consumes it, and it is a fingerprinting surface.
+   */
   referrer?: string;
-  userAgent?: string;
+  /**
+   * ISO 3166-1 alpha-2, resolved by the CDN at the edge. "ZZ" when unknown.
+   * Stored day-granular and apart from the event; see countries-table.ts.
+   */
+  country?: string;
 }
 
 export interface VisitEvent extends TrackVisitInput {
@@ -18,6 +27,11 @@ export interface VisitMetricsQuery {
   pageSlug?: string;
   startDate?: string;
   endDate?: string;
+}
+
+export interface CountryCount {
+  country: string;
+  visits: number;
 }
 
 export interface VisitMetrics {
@@ -48,6 +62,9 @@ export interface VisitTracker {
 
   /** Returns totals, CTR, per-link counts, and top referrers for a date range. */
   getMetrics(input?: VisitMetricsQuery): Promise<VisitMetrics>;
+
+  /** Visit counts per country for a date range, most visits first. */
+  getCountries(input?: VisitMetricsQuery): Promise<CountryCount[]>;
 
   /** Removes all locally persisted raw events. */
   clear(): Promise<void>;

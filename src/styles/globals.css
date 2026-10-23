@@ -143,14 +143,28 @@ a {
 .visitor-page {
   min-height: 100vh;
   overflow: hidden;
-  background:
-    linear-gradient(
-      to bottom,
-      var(--page-header, #efedff) 0,
-      var(--page-header, #efedff) 280px,
-      var(--page-background, var(--background)) 280px,
-      var(--page-background, var(--background)) 100%
-    );
+  /* Browser surfaces belong to the design too: selection, caret and scrollbar
+     otherwise ship with defaults from no design system, and they look wrong the
+     moment a page uses a dark theme. */
+  caret-color: var(--page-primary, var(--primary));
+  scrollbar-color: var(--page-primary, var(--primary))
+    var(--page-background, var(--background));
+  background: var(--page-background, var(--background));
+}
+
+.visitor-page ::selection {
+  background: var(--page-accent, var(--accent));
+  color: var(--page-ink, var(--ink));
+}
+
+/* Owner-supplied conference logo, standing in for the built-in mark. Contained
+   rather than cropped so a wide wordmark is not cut off. */
+.visitor-logo {
+  display: block;
+  width: auto;
+  max-width: 200px;
+  height: 64px;
+  object-fit: contain;
 }
 
 .visitor-page .logo-mark {
@@ -158,11 +172,12 @@ a {
 }
 
 .visitor-shell {
+  --visitor-shell-top: 54px;
   position: relative;
   width: min(100%, 390px);
   min-height: 932px;
   margin: 0 auto;
-  padding: 54px 24px 30px;
+  padding: var(--visitor-shell-top) 24px 30px;
 }
 
 .share-icon-button {
@@ -199,18 +214,43 @@ a {
   text-align: center;
 }
 
-.header-sparkle {
+/*
+ * Header band.
+ *
+ * Previously the band was a gradient stop at a hard 280px on .visitor-page,
+ * which is a magic number the content can outgrow: a title wrapping to a third
+ * line pushed text past the stop and onto the body surface. On a theme with a
+ * dark header over a light body (the AWS preset) that put near-white text on
+ * white -- 1.7:1.
+ *
+ * Painting it from the header instead ties the band's height to the thing it is
+ * meant to cover. The 100vw inset keeps it full-bleed inside the 390px shell,
+ * and the shell's own top padding is included so the band reaches the viewport
+ * edge. Children are lifted above it rather than the band being pushed behind
+ * the parent with a negative z-index, which would hide it under .visitor-page's
+ * own background.
+ */
+.visitor-header::before {
+  content: "";
   position: absolute;
-  top: 2px;
-  left: 22px;
-  color: var(--page-accent, #f88960);
-  font-size: 23px;
-  line-height: 1;
+  left: 50%;
+  top: calc(-1 * var(--visitor-shell-top, 54px));
+  width: 100vw;
+  /* Exactly the header, plus the shell's top padding so it reaches the viewport
+     edge. No subtractive offset, so there is no value for content to outgrow. */
+  height: calc(100% + var(--visitor-shell-top, 54px));
+  background: var(--page-header, #efedff);
+  transform: translateX(-50%);
+}
+
+.visitor-header > * {
+  position: relative;
+  z-index: 1;
 }
 
 .visitor-header h1 {
   margin: 25px 0 5px;
-  color: var(--ink);
+  color: var(--page-header-ink, var(--ink));
   font-size: 32px;
   font-weight: 800;
   line-height: 40px;
@@ -220,34 +260,31 @@ a {
 .visitor-header p {
   max-width: 300px;
   margin: 0;
-  color: var(--muted);
+  color: var(--page-header-ink-soft, var(--muted));
   font-size: 15px;
   font-weight: 400;
   line-height: 22px;
 }
 
 .curated-label {
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  z-index: 1;
+  display: block;
   width: max-content;
-  padding: 8px 16px 7px;
+  margin: 20px auto 0;
+  padding: 7px 16px;
   border-radius: 999px;
-  background: #ffd9c3;
-  color: #4e4140;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 16px;
-  text-transform: uppercase;
-  transform: translateX(-50%);
+  background: var(--page-badge, #ffd9c3);
+  color: var(--page-badge-ink, #5c3317);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 18px;
 }
 
 .link-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 0;
+  margin-top: 20px;
 }
 
 .link-row {
@@ -258,9 +295,9 @@ a {
   align-items: center;
   gap: 14px;
   padding: 11px 16px 11px 13px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 16px;
-  background: var(--surface);
+  background: var(--page-surface, var(--surface));
   box-shadow: 0 5px 14px rgba(42, 39, 56, 0.06);
   transition:
     transform 180ms ease-out,
@@ -270,13 +307,13 @@ a {
 }
 
 .link-row:hover {
-  border-color: #c9c2eb;
+  border-color: color-mix(in srgb, var(--page-primary, var(--primary)) 38%, transparent);
   box-shadow: 0 9px 20px rgba(42, 39, 56, 0.1);
   transform: translateY(-2px);
 }
 
 .link-row:active {
-  background: #faf9ff;
+  background: color-mix(in srgb, var(--page-primary, var(--primary)) 6%, var(--page-surface, var(--surface)));
   box-shadow: 0 2px 8px rgba(42, 39, 56, 0.06);
   transform: translateY(1px);
 }
@@ -311,7 +348,7 @@ a {
 }
 
 .link-copy strong {
-  color: var(--ink);
+  color: var(--page-ink, var(--ink));
   font-size: 15px;
   font-weight: 600;
   line-height: 20px;
@@ -319,10 +356,10 @@ a {
 
 .link-copy span {
   margin-top: 2px;
-  color: var(--muted);
-  font-size: 11px;
+  color: var(--page-ink-soft, var(--muted));
+  font-size: 12px;
   font-weight: 400;
-  line-height: 16px;
+  line-height: 17px;
 }
 
 .link-chevron {
@@ -345,7 +382,7 @@ a {
   border-radius: 17px;
   background: var(--page-primary, var(--primary));
   color: #fff;
-  box-shadow: 0 10px 22px rgba(54, 43, 128, 0.2);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.20);
   cursor: pointer;
   font-size: 15px;
   font-weight: 600;
@@ -356,12 +393,12 @@ a {
 }
 
 .share-primary:hover {
-  box-shadow: 0 13px 27px rgba(54, 43, 128, 0.27);
+  box-shadow: 0 13px 27px rgba(0, 0, 0, 0.26);
   transform: translateY(-2px);
 }
 
 .share-primary:active {
-  box-shadow: 0 7px 16px rgba(54, 43, 128, 0.18);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, 0.18);
   transform: translateY(0);
 }
 
@@ -376,23 +413,29 @@ a {
   position: relative;
   margin-top: 35px;
   padding-top: 29px;
-  border-top: 1px solid #dedbe8;
+  border-top: 1px solid var(--page-border, #dedbe8);
   text-align: center;
 }
 
 .visitor-footer p {
   margin: 0;
-  color: #777282;
-  font-size: 11px;
+  color: var(--page-ink-soft, #6a6575);
+  font-size: 13px;
   font-weight: 400;
-  line-height: 16px;
+  line-height: 20px;
 }
 
-.footer-sparkle {
-  display: block;
-  margin-top: 25px;
-  color: var(--page-accent, #f88960);
-  font-size: 15px;
+/* Underlined rather than colour-only, so the link is not signalled by hue alone. */
+.visitor-footer a {
+  color: var(--page-primary, var(--primary));
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.visitor-footer a:hover {
+  text-decoration-thickness: 2px;
 }
 
 .share-icon-button:focus-visible,
@@ -404,8 +447,8 @@ a {
 .admin-app select:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 2px var(--background),
-    0 0 0 5px var(--accent);
+    0 0 0 2px var(--page-background, var(--background)),
+    0 0 0 5px var(--page-accent, var(--accent));
 }
 
 .visitor-page[data-button-style="flat"] .link-row {
@@ -414,7 +457,7 @@ a {
 }
 
 .visitor-page[data-button-style="outline"] .link-row {
-  border: 2px solid color-mix(in srgb, var(--page-primary) 32%, white);
+  border: 2px solid color-mix(in srgb, var(--page-primary) 32%, var(--page-background, white));
   box-shadow: none;
   background: transparent;
 }
@@ -742,6 +785,18 @@ a {
   font-size: 12px;
 }
 
+.create-page-form .status-description {
+  margin: 0 0 20px;
+  text-align: left;
+}
+
+.form-notice {
+  margin: 12px 0 0;
+  color: var(--muted-strong, #4a5568);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .slug-input,
 .readonly-url {
   display: flex;
@@ -828,7 +883,7 @@ a {
 .primary-command {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 7px 16px rgba(54, 43, 128, 0.16);
+  box-shadow: 0 7px 16px rgba(0, 0, 0, 0.16);
 }
 
 .secondary-command {
@@ -886,14 +941,18 @@ a {
   display: block;
 }
 
+/* 12px, not 10px: these are functional form labels, and impeccable's detector
+   flags interactive/content-bearing text under 11px as a legibility failure
+   rather than a style choice. Letterspacing keeps the small-caps look. */
 .field > span,
 .button-style-control legend {
   display: block;
   margin-bottom: 7px;
   color: #575261;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 15px;
+  letter-spacing: 0.04em;
+  line-height: 17px;
   text-transform: uppercase;
 }
 
@@ -926,10 +985,18 @@ a {
 }
 
 .readonly-url {
-  justify-content: space-between;
   padding-left: 13px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
+}
+
+/* Groups both controls at the trailing edge. space-between left the pencil
+   stranded mid-field once a second control joined the row. */
+.readonly-url > span:first-child {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .readonly-url a {
@@ -1217,15 +1284,16 @@ a {
 .appearance-phone-header > strong {
   display: block;
   margin-top: 12px;
+  color: var(--preview-header-ink, var(--ink));
   font-size: 14px;
   line-height: 19px;
 }
 
 .appearance-phone-header > p {
   margin: 3px auto 0;
-  color: var(--muted);
-  font-size: 8px;
-  line-height: 12px;
+  color: var(--preview-header-ink-soft, var(--muted));
+  font-size: 10px;
+  line-height: 14px;
 }
 
 .appearance-phone-links {
@@ -1241,11 +1309,12 @@ a {
   align-items: center;
   gap: 9px;
   padding: 0 9px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--preview-border, var(--border));
   border-radius: 12px;
-  background: white;
+  background: var(--preview-surface, white);
+  color: var(--preview-ink, var(--ink));
   box-shadow: 0 4px 9px rgba(42, 39, 56, 0.06);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 600;
 }
 
@@ -1275,10 +1344,10 @@ a {
   margin: 20px auto 0;
   padding: 5px 9px;
   border-radius: 999px;
-  background: var(--preview-accent);
-  font-size: 7px;
+  background: var(--preview-badge, var(--preview-accent));
+  color: var(--preview-badge-ink, var(--ink));
+  font-size: 10px;
   font-weight: 700;
-  text-transform: uppercase;
 }
 
 .admin-share-workspace {
@@ -2069,5 +2138,729 @@ a {
   .share-primary:hover,
   .share-icon-button:hover {
     transform: none;
+  }
+}
+
+/* Status surfaces: 404, error boundaries, and admin loading skeletons */
+
+/* ---------- Landing page ("/") ----------
+   Deliberately does NOT reuse .status-card: that shell belongs to the 404 and
+   error screens, and borrowing it is what made the front door read as a failure
+   state. Type carries the page instead of a container. */
+.landing {
+  display: grid;
+  min-height: 100vh;
+  padding: 72px 32px 56px;
+  place-items: center;
+  background: var(--background);
+}
+
+.landing-inner {
+  width: min(100%, 760px);
+}
+
+.landing h1 {
+  margin: 30px 0 0;
+  /* Fluid so the display size never has to be re-picked per breakpoint. */
+  font-size: clamp(34px, 6.4vw, 56px);
+  font-weight: 800;
+  /* Craft floor: tracking stops at -0.04em; -0.03 reads better here. */
+  letter-spacing: -0.03em;
+  line-height: 1.07;
+  text-wrap: balance;
+  max-width: 20ch;
+}
+
+/* Marker bar drawn as the inline box's own background: a solid fill under the
+   glyphs, not a gradient behind them, so the headline keeps full ink contrast.
+   background-color must be cleared or the UA default mark{background:yellow}
+   shows through as a block. */
+.landing h1 mark {
+  background-color: transparent;
+  background-image: linear-gradient(var(--supporting), var(--supporting));
+  background-repeat: no-repeat;
+  background-size: 100% 0.2em;
+  background-position: 0 84%;
+  color: inherit;
+}
+
+.landing-lede {
+  /* 65-75ch body measure. */
+  max-width: 54ch;
+  margin: 18px 0 0;
+  color: #4d4959;
+  font-size: 17px;
+  line-height: 27px;
+}
+
+.landing-cta {
+  margin-top: 30px;
+}
+
+/* Radius 14px, not a pill: pills are for small controls. */
+.landing-action {
+  display: inline-flex;
+  height: 48px;
+  align-items: center;
+  padding: 0 26px;
+  border-radius: 14px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  transition:
+    transform 160ms ease-out,
+    box-shadow 160ms ease-out;
+}
+
+.landing-action:hover {
+  box-shadow: 0 10px 24px rgba(92, 79, 179, 0.28);
+  transform: translateY(-1px);
+}
+
+.landing-action:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 5px var(--accent);
+}
+
+.landing-facts {
+  display: grid;
+  margin: 48px 0 0;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  gap: 26px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.landing-facts dt {
+  margin: 0;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.landing-facts dd {
+  margin: 8px 0 0;
+  color: #4d4959;
+  font-size: 14px;
+  line-height: 21px;
+}
+
+@media (max-width: 760px) {
+  .landing {
+    padding: 48px 22px 40px;
+  }
+
+  .landing-facts {
+    gap: 22px;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Status and error screens ---------- */
+.status-page {
+  display: grid;
+  min-height: 100vh;
+  padding: 48px 24px;
+  place-items: center;
+  background:
+    radial-gradient(
+      140% 62% at 50% 0,
+      #efedff 0,
+      rgba(239, 237, 255, 0) 70%
+    ),
+    var(--background);
+}
+
+.status-card {
+  display: flex;
+  width: min(100%, 420px);
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 24px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 24px 64px rgba(42, 39, 56, 0.1);
+  text-align: center;
+}
+
+.status-eyebrow {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.status-code {
+  margin: 10px 0 0;
+  color: var(--primary);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 42px;
+}
+
+.status-card h1 {
+  margin: 6px 0 0;
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 32px;
+}
+
+.status-description {
+  max-width: 320px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.status-action {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: 17px;
+  background: var(--primary);
+  color: var(--surface);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.20);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  transition:
+    transform 160ms ease-out,
+    box-shadow 160ms ease-out;
+}
+
+.status-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.25);
+}
+
+.status-action:active {
+  transform: translateY(0);
+}
+
+.status-action:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.status-action.secondary {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: none;
+}
+
+.status-reference {
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.status-reference code {
+  font-size: 11px;
+}
+
+.status-inline {
+  padding: 28px 24px;
+}
+
+.status-inline h1 {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 32px;
+}
+
+.status-inline > p:not(.eyebrow) {
+  max-width: 460px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.status-inline .status-actions {
+  justify-content: flex-start;
+}
+
+.admin-skeleton {
+  display: grid;
+  gap: 16px;
+}
+
+.skeleton-block {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.skeleton-line {
+  display: block;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--lavender);
+}
+
+.skeleton-line-eyebrow {
+  width: 96px;
+  height: 10px;
+}
+
+.skeleton-line-title {
+  width: min(100%, 280px);
+  height: 28px;
+}
+
+.skeleton-line-short {
+  width: 60%;
+}
+
+.skeleton-body {
+  min-height: 180px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton-line {
+    animation: skeleton-pulse 1400ms ease-in-out infinite;
+  }
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Sign-in surface, rendered inside .status-card */
+
+.auth-form {
+  display: grid;
+  width: 100%;
+  gap: 16px;
+  margin-top: 24px;
+  text-align: left;
+}
+
+.auth-form .field > input {
+  width: 100%;
+}
+
+.auth-form .status-action {
+  justify-content: center;
+  width: 100%;
+}
+
+.auth-switch {
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.auth-switch:hover {
+  text-decoration: underline;
+}
+
+.auth-switch:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.admin-signout {
+  display: grid;
+  height: 40px;
+  padding: 0 16px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.admin-signout:hover:not(:disabled) {
+  background: #f0edff;
+}
+
+.admin-signout:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.admin-signout:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* ---------- Theme presets, palette extraction and logo ---------- */
+.theme-presets {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin-top: 4px;
+}
+
+.theme-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    box-shadow 160ms ease-out,
+    transform 160ms ease-out;
+}
+
+.theme-preset:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+/* Selection is carried by the ring AND the label weight, never colour alone. */
+.theme-preset[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.theme-preset strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.theme-preset[aria-pressed="true"] strong::after {
+  content: " · in use";
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.theme-preset small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.theme-swatches {
+  display: flex;
+  gap: 4px;
+}
+
+.theme-swatches i {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.09);
+}
+
+.image-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.palette-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.preview-logo {
+  display: block;
+  max-width: 120px;
+  height: 40px;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+/* Badge text and its colour, grouped so the wording is found where the
+   badge is being designed rather than on the Links page. */
+.badge-controls {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .badge-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* In-flow hint text. `.field small` is absolutely positioned at 9px for short
+   character counters ("35/80"); a sentence in that slot escapes the field and
+   collides with whatever follows. */
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+/* Share-card text controls. Only rendered on the admin surface. */
+.share-text-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  width: 100%;
+  padding-bottom: 16px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.share-text-fields .field {
+  flex: 1 1 200px;
+}
+
+.share-text-fields .field-hint {
+  flex: 1 1 100%;
+  margin-top: 0;
+}
+
+.unsaved-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.unsaved-actions .primary-action,
+.unsaved-actions .secondary-action {
+  display: flex;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.unsaved-actions .secondary-action {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--border);
+}
+
+.badge-controls .field-hint {
+  grid-column: 1 / -1;
+  margin: 0 0 8px;
+}
+
+/* Header wording, sitting with the header's colours on the Appearance tab. */
+.header-fields {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+/* ---------- Visits by country ----------
+   Country only, day-granular, no IP addresses. The map is an equirectangular
+   dot plot over a graticule rather than traced coastlines: honest geometry
+   instead of an approximated landmass. */
+.country-panel {
+  margin-top: 18px;
+  padding: 22px 24px 24px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.country-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.country-panel-head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.country-panel-head p {
+  margin: 5px 0 0;
+  max-width: 58ch;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.country-panel-head svg {
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.country-empty {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 21px;
+}
+
+.country-body {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  align-items: start;
+  margin-top: 20px;
+}
+
+.country-map {
+  margin: 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--background);
+}
+
+.country-map svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.country-graticule line {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.country-dot circle {
+  fill: color-mix(in srgb, var(--primary) 26%, transparent);
+  stroke: var(--primary);
+  stroke-width: 1.25;
+}
+
+.country-dot .country-dot-core {
+  fill: var(--primary);
+  stroke: none;
+}
+
+.country-dot text {
+  fill: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.country-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.country-list li {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) 72px auto;
+  align-items: center;
+}
+
+.country-rank-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.country-rank-name code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--lavender);
+  color: #4b3f97;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.country-bar {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.country-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.country-figures {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.country-figures strong {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.country-figures small {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 880px) {
+  .country-body {
+    grid-template-columns: 1fr;
   }
 }

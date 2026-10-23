@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 export function VisitorTracker({ pageSlug }: { pageSlug: string }) {
   useEffect(() => {
-    void fetch("/api/track", {
+    void fetch("/app-api/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
