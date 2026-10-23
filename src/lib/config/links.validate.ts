@@ -70,8 +70,13 @@ function assertSafeLogo(raw: string) {
       "The logo is too large; use an image under about 190 KB",
     );
   }
-  const match = /^data:([a-z/+-]+);base64,([A-Za-z0-9+/]+={0,2})$/.exec(raw);
-  if (!match) {
+  // Canonical base64 only: whole 4-character groups, with "=" padding allowed
+  // solely in the final group. Rejects payloads such as "abc=" or "ab===".
+  const match =
+    /^data:([a-z/+-]+);base64,((?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?)$/.exec(
+      raw,
+    );
+  if (!match || match[2].length === 0) {
     throw new PageValidationError(
       "The logo must be a base64 image data URL",
     );
