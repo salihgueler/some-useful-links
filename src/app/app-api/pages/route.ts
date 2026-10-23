@@ -3,6 +3,7 @@ import { errorResponse } from "@/lib/api/errors";
 import { assertJsonBody, assertSameOrigin } from "@/lib/api/csrf";
 import { requireOwnerApi } from "@/lib/auth/require-owner";
 import type { PageConfiguration } from "@/lib/config/links.types";
+import { isReservedSlug } from "@/lib/config/reserved-slugs";
 import { validatePageInput } from "@/lib/config/links.validate";
 import { linkStore } from "@/lib/services";
 
@@ -28,6 +29,14 @@ export async function POST(request: NextRequest) {
     if (!slug || !slugPattern.test(slug) || !title) {
       return NextResponse.json(
         { error: "A title and URL-safe slug are required" },
+        { status: 400 },
+      );
+    }
+    // A slug matching one of the app's own routes would be shadowed by it: the
+    // address would resolve, but to our page rather than the owner's.
+    if (isReservedSlug(slug)) {
+      return NextResponse.json(
+        { error: `"${slug}" is reserved by the app. Please choose another address.` },
         { status: 400 },
       );
     }

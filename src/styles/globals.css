@@ -2864,3 +2864,275 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Whole-app statistics (operator only) ----------
+ *
+ * A denser surface than the per-collection dashboard on purpose: one person
+ * reads this, and they want a month of numbers at a glance rather than a
+ * presentation. Tabular numerals throughout so columns of digits line up and
+ * an outlier is visible without reading every row.
+ */
+
+.app-stats-page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px 20px 72px;
+}
+
+.app-stats-header {
+  margin-bottom: 22px;
+}
+
+.app-stats-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+
+.app-stats-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+  /* Prose gets a measure even on a wide operator surface; the table beside it
+   * is tabular data and is deliberately allowed to run full width. `ch` is the
+   * zero-glyph advance, which is wider than average lowercase -- so this sits
+   * well below the 80-character target to actually land under it. */
+  max-width: 52ch;
+}
+
+/* The run time is load-bearing, not decoration: every number here can be up to
+ * a day old, and hiding that invites someone to read a quiet night as a drop. */
+.app-stats-freshness {
+  font-variant-numeric: tabular-nums;
+  color: var(--positive);
+  font-weight: 600;
+  /* Wraps as one unit: the measure above otherwise breaks "Last run" onto a
+   * different line from the timestamp it labels. */
+  white-space: nowrap;
+}
+
+.app-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.app-stats-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.app-stats-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 14px;
+}
+
+.app-stats-chart {
+  width: 100%;
+  height: 210px;
+  display: block;
+  overflow: visible;
+}
+
+/* Below the two-column breakpoint the 960-unit viewBox scales down hard. Left
+ * at a fixed height it letterboxes -- a thin band of chart floating in dead
+ * space -- so height follows the aspect ratio instead. */
+@media (max-width: 700px) {
+  .app-stats-chart {
+    height: auto;
+    aspect-ratio: 960 / 220;
+  }
+}
+
+.app-stats-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.app-stats-tick {
+  font-size: 11px;
+  fill: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-stats-legend {
+  display: flex;
+  gap: 16px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.app-stats-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-stats-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.app-stats-strip {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.app-stats-strip li {
+  flex: 1;
+  padding: 13px 15px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-stats-strip li:last-child {
+  border-right: none;
+}
+
+.app-stats-strip-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.app-stats-strip-value {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-stats-table-wrap {
+  overflow-x: auto;
+}
+
+.app-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-stats-table th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: right;
+  padding: 0 0 9px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.app-stats-table thead th:first-child,
+.app-stats-table tbody th {
+  text-align: left;
+  padding-left: 0;
+}
+
+.app-stats-table tbody th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--lavender);
+  padding: 7px 12px 7px 0;
+  white-space: nowrap;
+}
+
+.app-stats-table td {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  padding: 7px 0 7px 12px;
+  border-bottom: 1px solid var(--lavender);
+}
+
+.app-stats-table tbody tr:hover th,
+.app-stats-table tbody tr:hover td {
+  background: var(--background);
+}
+
+/* Dimmed rather than hidden: an explicit 0 is information, it just should not
+ * compete with the numbers that matter. */
+.app-stats-zero {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.app-stats-empty {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.app-stats-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.app-stats-empty-body {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 auto;
+  max-width: 46ch;
+  line-height: 1.55;
+}
+
+@media (max-width: 880px) {
+  .app-stats-strip {
+    flex-wrap: wrap;
+  }
+
+  .app-stats-strip li {
+    flex: 1 1 33%;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 560px) {
+  .app-stats-strip li {
+    flex: 1 1 50%;
+  }
+}
+
+/* Axis labels are dropped, not shrunk, on narrow screens.
+ *
+ * They live in SVG user units, so they scale with the viewBox: at 390px the
+ * chart renders at 0.31x and an 11px label lands at 3.4px on screen (measured,
+ * not estimated). Scaling the user-unit size up cannot fix it either, because
+ * the factor ranges from 0.31 to 0.69 across this breakpoint and one value
+ * would be illegible at one end or enormous at the other. The table below
+ * carries every date and value, so here the chart is a trend shape and the
+ * numbers are read from the table.
+ *
+ * This rule sits after the base .app-stats-tick declaration on purpose: media
+ * queries add no specificity, so an earlier override would simply lose. */
+@media (max-width: 700px) {
+  .app-stats-tick {
+    display: none;
+  }
+}

@@ -15,3 +15,4 @@ src/lib/services/local/data/visits.json
 cdk.out/
 aws-blocks/client.js
 aws-blocks/blocks.spec.json
+/.open-next/
