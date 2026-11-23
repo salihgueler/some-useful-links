@@ -1,6 +1,6 @@
-import { DistributedTable } from "@aws-blocks/blocks";
+import { KVStore } from "aws-cdk-blocks";
 import { z } from "zod";
-import { Scope } from "@aws-blocks/blocks";
+import { Scope } from "aws-cdk-blocks";
 
 /**
  * Single table holding two record kinds, distinguished by partition key.
@@ -41,7 +41,7 @@ export const ownerPartition = (ownerId: string) => `USER#${ownerId}`;
 export const pageKey = (slug: string) => `PAGE#${slug}`;
 
 export function createPagesTable(scope: Scope) {
-  return new DistributedTable(scope, "pages", {
+  return new KVStore(scope, "pages", {
     schema: recordSchema,
     key: { partitionKey: "pk", sortKey: "sk" },
   });

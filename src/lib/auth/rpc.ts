@@ -2,7 +2,7 @@
  * Browser-side JSON-RPC call to the Blocks API.
  *
  * The endpoint is DISCOVERED, not hardcoded. Locally the Blocks dev server
- * serves the API at /aws-blocks/api on the same origin, but behind CloudFront
+ * serves the API at /cdk-blocks/api on the same origin, but behind CloudFront
  * that path belongs to the SSR Lambda -- CloudFront routes the API elsewhere.
  * Hosting generates /.blocks-sandbox/config.json carrying the real apiUrl for
  * exactly this reason, so read it once and cache the result.
@@ -11,7 +11,7 @@
  * is correct in local development.
  */
 
-const FALLBACK_PATH = "/aws-blocks/api";
+const FALLBACK_PATH = "/cdk-blocks/api";
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "0.0.0.0", "[::1]"]);
 

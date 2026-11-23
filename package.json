@@ -3,26 +3,34 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "aws-blocks"
+    "cdk-blocks"
   ],
   "scripts": {
     "predev": "npm run validate:links",
     "dev": "next dev --webpack",
-    "dev:api": "tsx watch aws-blocks/scripts/server.ts",
+    "dev:api": "cdk-blocks dev",
     "validate:links": "node scripts/validate-links.mjs",
     "build": "npm run validate:links && next build --webpack",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "spec": "blocks-generate-spec",
-    "sandbox": "tsx aws-blocks/scripts/sandbox.ts",
-    "sandbox:destroy": "tsx -C cdk aws-blocks/scripts/sandbox-destroy.ts",
-    "sandbox:console": "tsx aws-blocks/scripts/console.ts",
-    "deploy": "tsx aws-blocks/scripts/deploy.ts",
-    "destroy": "tsx aws-blocks/scripts/destroy.ts",
-    "cleanup": "tsx aws-blocks/scripts/cleanup.ts"
+    "spec": "cdk-blocks spec",
+    "sandbox": "cdk-blocks sandbox",
+    "sandbox:destroy": "cdk-blocks sandbox:destroy",
+    "sandbox:console": "cdk-blocks sandbox:console",
+    "deploy": "cdk-blocks deploy",
+    "destroy": "cdk-blocks destroy",
+    "cleanup": "cdk-blocks cleanup",
+    "docs": "cdk-blocks docs",
+    "docs:search": "cdk-blocks docs --search",
+    "docs:api": "cdk-blocks docs --api",
+    "db": "cdk-blocks db",
+    "whoami": "cdk-blocks whoami",
+    "migrate": "cdk-blocks migrate",
+    "help": "cdk-blocks --help",
+    "generate-client": "cdk-blocks generate client"
   },
   "dependencies": {
-    "@aws-blocks/blocks": "0.9.0",
+    "aws-cdk-blocks": "1.0.1",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "lucide-react": "^0.468.0",
@@ -48,5 +56,10 @@
     "tailwindcss": "^3.4.17",
     "tsx": "4.23.12",
     "typescript": "^5.7.2"
+  },
+  "blocks": {
+    "dev": {
+      "frontendPort": 3100
+    }
   }
 }

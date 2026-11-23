@@ -1,4 +1,4 @@
-import { ApiError, isBlocksError, DistributedTableErrors } from "@aws-blocks/blocks";
+import { ApiError, isBlocksError, KVStoreErrors } from "aws-cdk-blocks";
 import {
   SLUG_PARTITION,
   ownerPartition,
@@ -25,6 +25,7 @@ export function pageOperations(table: PagesTable) {
   async function reserveSlug(slug: string, ownerId: string) {
     try {
       await table.put(
+        { pk: SLUG_PARTITION, sk: slug },
         {
           pk: SLUG_PARTITION,
           sk: slug,
@@ -35,7 +36,7 @@ export function pageOperations(table: PagesTable) {
         { ifNotExists: true },
       );
     } catch (error) {
-      if (isBlocksError(error, DistributedTableErrors.ConditionalCheckFailed)) {
+      if (isBlocksError(error, KVStoreErrors.ConditionalCheckFailed)) {
         throw new ApiError(`The slug "${slug}" is already taken`, 409, {
           name: "SlugTaken",
         });
@@ -63,7 +64,7 @@ export function pageOperations(table: PagesTable) {
 
     async listPages(ownerId: string) {
       const summaries: Array<{ slug: string; isDefault: boolean; page: string }> = [];
-      for await (const record of table.query({
+      for await (const { value: record } of table.query({
         where: { pk: { equals: ownerPartition(ownerId) }, sk: { beginsWith: "PAGE#" } },
       })) {
         if (record.page) {
@@ -93,7 +94,7 @@ export function pageOperations(table: PagesTable) {
     async createPage(ownerId: string, slug: string, page: string, isDefault: boolean) {
       await reserveSlug(slug, ownerId);
       try {
-        await table.put({
+        await table.put({ pk: ownerPartition(ownerId), sk: pageKey(slug) }, {
           pk: ownerPartition(ownerId),
           sk: pageKey(slug),
           slug,
@@ -115,7 +116,7 @@ export function pageOperations(table: PagesTable) {
     async updatePage(ownerId: string, slug: string, page: string) {
       const existing = await readOwnedPage(ownerId, slug);
       if (!existing) throw notFound(slug);
-      await table.put({
+      await table.put({ pk: existing.pk, sk: existing.sk }, {
         ...existing,
         page,
         updatedAt: new Date().toISOString(),
@@ -147,7 +148,7 @@ export function pageOperations(table: PagesTable) {
 
       await reserveSlug(nextSlug, ownerId);
       try {
-        await table.put({
+        await table.put({ pk: ownerPartition(ownerId), sk: pageKey(nextSlug) }, {
           pk: ownerPartition(ownerId),
           sk: pageKey(nextSlug),
           slug: nextSlug,

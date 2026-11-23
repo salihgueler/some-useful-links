@@ -20,7 +20,7 @@ UI renders, but every API call fails.
 
 You do not need an AWS account to work on this. In development the Cognito
 confirmation code is printed to the dev server log and written to
-`.bb-data/some-useful-links-auth/last-code.json`, so sign-up works with no email
+`.cdk-blocks/local/data/some-useful-links-auth/last-code.json`, so sign-up works with no email
 provider and no cloud resources.
 
 ## Before you open a pull request

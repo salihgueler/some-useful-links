@@ -98,7 +98,7 @@ so claiming one that is taken fails with 409.
 
 ## Accounts
 
-Sign-up is open to any email address. `aws-blocks/eligibility.ts` only rejects
+Sign-up is open to any email address. `cdk-blocks/eligibility.ts` only rejects
 input that cannot be an address, so malformed input fails with a clear error.
 
 The real control is the emailed confirmation code, which proves the person
@@ -107,7 +107,7 @@ account's address is confirmed, so an account created out of band without
 confirmation cannot act as an owner.
 
 In local development the confirmation code is printed to the dev server log and
-written to `.bb-data/some-useful-links-auth/last-code.json`; no email provider
+written to `.cdk-blocks/local/data/some-useful-links-auth/last-code.json`; no email provider
 is involved.
 
 ## Backend
@@ -116,8 +116,8 @@ Application code reaches data only through the contracts in
 `src/lib/services/interfaces`, resolved by the registry in
 `src/lib/services/index.ts` — the single provider swap point.
 
-The active provider is AWS Blocks (`aws-blocks/`), with four owner-partitioned
-DistributedTables:
+The active provider is AWS CDK Blocks (`cdk-blocks/`), with four owner-partitioned
+KVStore tables:
 
 | Table | Keys | Notes |
 | --- | --- | --- |
@@ -205,7 +205,7 @@ billable AWS resources. Every other script is local.
 
 ### Custom domain
 
-The domain block in `aws-blocks/index.cdk.ts` is gated on
+The domain block in `cdk-blocks/index.cdk.ts` is gated on
 `HOSTING_CERTIFICATE_ARN`; with the variable unset the block is spread as `{}`
 and the stack behaves exactly as it did before the feature existed.
 

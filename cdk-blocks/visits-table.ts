@@ -1,4 +1,4 @@
-import { DistributedTable, Scope } from "@aws-blocks/blocks";
+import { KVStore, Scope } from "aws-cdk-blocks";
 import { z } from "zod";
 import { ownerPartition } from "./pages-table";
 
@@ -56,7 +56,7 @@ const eventKey = (pageSlug: string, timestamp: string, id: string) =>
 const eventIdFromKey = (sk: string) => sk.slice(sk.lastIndexOf("#") + 1);
 
 export function createVisitsTable(scope: Scope) {
-  return new DistributedTable(scope, "visits", {
+  return new KVStore(scope, "visits", {
     schema: visitSchema,
     key: { partitionKey: "pk", sortKey: "sk" },
     ttl: "expiresAt",
@@ -68,7 +68,7 @@ type VisitsTable = ReturnType<typeof createVisitsTable>;
 export function visitOperations(table: VisitsTable) {
   async function read(ownerId: string, pageSlug: string, from: string, to: string) {
     const rows: VisitRecord[] = [];
-    for await (const row of table.query({
+    for await (const { value: row } of table.query({
       where: {
         pk: { equals: ownerPartition(ownerId) },
         sk: { between: [eventKey(pageSlug, from, ""), eventKey(pageSlug, to, "~")] },
@@ -89,9 +89,11 @@ export function visitOperations(table: VisitsTable) {
       const now = new Date();
       const id = crypto.randomUUID();
       const timestamp = now.toISOString();
-      await table.put({
-        pk: ownerPartition(ownerId),
-        sk: eventKey(pageSlug, timestamp, id),
+      const pk = ownerPartition(ownerId);
+      const sk = eventKey(pageSlug, timestamp, id);
+      await table.put({ pk, sk }, {
+        pk,
+        sk,
         pageSlug,
         type: event.type,
         linkId: event.linkId,
@@ -146,9 +148,10 @@ export function visitOperations(table: VisitsTable) {
       if (fromSlug === toSlug) return 0;
       const rows = await read(ownerId, fromSlug, "0000", "9999");
       for (const row of rows) {
-        await table.put({
+        const sk = eventKey(toSlug, row.timestamp, eventIdFromKey(row.sk));
+        await table.put({ pk: row.pk, sk }, {
           ...row,
-          sk: eventKey(toSlug, row.timestamp, eventIdFromKey(row.sk)),
+          sk,
           pageSlug: toSlug,
         });
         await table.delete({ pk: row.pk, sk: row.sk });

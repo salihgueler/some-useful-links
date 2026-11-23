@@ -5,7 +5,7 @@
 Some Useful Links is a multi-owner link-sharing application built with Next.js
 App Router, React, strict TypeScript, and Tailwind CSS. Sign-up is open to any
 confirmed email address; collection pages stay public. Data lives
-in AWS Blocks (`aws-blocks/`) in four owner-partitioned DistributedTables.
+in AWS CDK Blocks (`cdk-blocks/`) in four owner-partitioned KVStore tables.
 
 Treat `README.md` as the product and setup reference, `DESIGN_SPEC.md` as the
 visual source of truth, and `src/lib/services/README.md` as the data-layer
@@ -62,7 +62,7 @@ initiative — they are the user's call, and `destroy` is irreversible.
 Everything else is local: `dev`, `dev:api`, `build`, `lint`, `validate:links`,
 `spec`, `cleanup`, `sandbox:console`.
 
-The custom domain in `aws-blocks/index.cdk.ts` is gated on
+The custom domain in `cdk-blocks/index.cdk.ts` is gated on
 `HOSTING_CERTIFICATE_ARN` and must stay inert when that variable is unset, so a
 deploy without it behaves exactly as it did before the domain existed. If you
 change that block, verify all three states by synthesising: a us-east-1 ARN
@@ -82,7 +82,7 @@ both the apex and `www`; see README for why.
 - `src/lib/services/local`: Original JSON implementations, kept as reference and
   NOT wired up.
 - `src/lib/services/index.ts`: The only provider registration and swap point.
-- `aws-blocks/`: Backend. Auth, the four tables, the JSON-RPC API, and the CDK
+- `cdk-blocks/`: Backend. Auth, the four tables, the JSON-RPC API, and the CDK
   stack definition in `index.cdk.ts`.
 - `src/styles/globals.css`: Shared styles and responsive behavior.
 - `public`: Static assets.
@@ -122,7 +122,7 @@ owner-scoped read breaks for anonymous visitors.
   separate `countries` table exists specifically so a country cannot be joined
   to a timestamped, link-bearing visit. These omissions are the GDPR position; a
   convenient extra field silently removes it.
-- Do not commit credentials. `.bb-data/` holds local mock auth data and is
+- Do not commit credentials. `.cdk-blocks/local/data/` holds local mock auth data and is
   gitignored.
 - Keep unrelated refactors and generated-file churn out of focused changes.
 
