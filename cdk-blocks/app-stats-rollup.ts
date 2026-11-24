@@ -92,7 +92,7 @@ async function aggregateVisits(
   byDate: Map<string, DayAccumulator>,
   from: string,
 ) {
-  for await (const row of visitsTable.scan()) {
+  for await (const { value: row } of visitsTable.scan()) {
     // Full ISO timestamp; the date half is what buckets the event.
     const date = row.timestamp.slice(0, 10);
     if (date < from) continue;
@@ -113,7 +113,7 @@ async function aggregateAggregates(
   byDate: Map<string, DayAccumulator>,
   from: string,
 ) {
-  for await (const row of analyticsTable.scan()) {
+  for await (const { value: row } of analyticsTable.scan()) {
     if (row.date < from) continue;
 
     const day = dayFor(byDate, row.date);
@@ -130,7 +130,7 @@ async function countTotals(pagesTable: PagesTable) {
   const owners = new Set<string>();
   let totalPages = 0;
 
-  for await (const row of pagesTable.scan()) {
+  for await (const { value: row } of pagesTable.scan()) {
     // Skip the global slug reservations -- they are not collections.
     if (row.pk === SLUG_PARTITION) continue;
     owners.add(row.pk);

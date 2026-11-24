@@ -2,10 +2,10 @@ import {
   ApiError,
   ApiNamespace,
   AppSetting,
-  AuthCognito,
+  Auth,
   CronJob,
   Scope,
-} from "@aws-blocks/blocks";
+} from "aws-cdk-blocks";
 import { analyticsOperations, createAnalyticsTable, type AnalyticsPoint } from "./analytics-table";
 import { appStatsOperations, createAppStatsTable } from "./app-stats-table";
 import { buildAppStats } from "./app-stats-rollup";
@@ -26,7 +26,7 @@ import {
 } from "./eligibility";
 
 // For coding agents: Leave these comments in place for future reference.
-// Read node_modules/@aws-blocks/blocks/README.md for all available Building Blocks
+// Read node_modules/aws-cdk-blocks/README.md for all available Building Blocks
 // Hover over Scope below to see the docstring with complete Building Block index
 
 const scope = new Scope("some-useful-links");
@@ -119,25 +119,35 @@ const isProduction = process.env.NODE_ENV === "production";
  * account in it. It is correct here because every account is identified by a
  * confirmed email address.
  */
-const auth = new AuthCognito(scope, "auth", {
-  signInWith: "email",
-  selfSignUp: true,
+const auth = new Auth(scope, "auth", {
+  // Explicit: this pool holds real users, and the previous AuthCognito pool was
+  // DESTROY by default. Retain keeps it if the block is ever removed.
+  removalPolicy: "retain",
+  users: {
+    signInWith: ["email"],
+  },
+  emailPassword: {
+    selfSignUp: true,
+    // Keeps AuthCognito's signUp() default, so confirmSignUp() still returns DONE.
+    autoSignIn: false,
+    passwordPolicy: {
+      minLength: 12,
+      requireDigits: true,
+      requireSymbols: true,
+      requireUppercase: true,
+      requireLowercase: true,
+    },
+  },
   // Optional TOTP only. EMAIL as an MFA type makes Cognito challenge every
   // sign-in with a mailed code, which would put routine sign-in behind email
   // deliverability into corporate inboxes -- the same dependency that already
   // gates sign-up confirmation. One point of failure there is enough.
-  mfa: "optional",
-  mfaTypes: ["TOTP"],
-  passwordPolicy: {
-    minLength: 12,
-    requireDigits: true,
-    requireSymbols: true,
-    requireUppercase: true,
-    requireLowercase: true,
+  mfa: { mode: "optional", types: ["TOTP"] },
+  session: {
+    // Shorter than the 400-day default, so a leaked or forgotten session on a
+    // shared device stops working within a day.
+    ttlSeconds: 60 * 60 * 12,
   },
-  // Shorter than the 400-day default, so a leaked or forgotten session on a
-  // shared device stops working within a day.
-  sessionTtlSeconds: 60 * 60 * 12,
   // Local mock only: surface confirmation codes in the dev server log so
   // sign-up can be exercised without an email provider. Never in production.
   ...(isProduction
@@ -264,7 +274,7 @@ export const api = new ApiNamespace(scope, "api", (context) => ({
    * Add sibling methods if a new challenge type is enabled later.
    */
   async confirmSignIn(session: string, code: string) {
-    return auth.confirmSignIn(session, { code }, context);
+    return auth.confirmSignIn(session, code, context);
   },
 
   /**

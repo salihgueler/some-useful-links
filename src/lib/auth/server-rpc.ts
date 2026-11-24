@@ -46,7 +46,7 @@ function endpoint(): string {
       "Neither BLOCKS_API_URL nor BLOCKS_RPC_URL is set; the API is unreachable",
     );
   }
-  return "http://127.0.0.1:3000/aws-blocks/api";
+  return "http://127.0.0.1:3000/cdk-blocks/api";
 }
 
 export async function serverRpc<T>(

@@ -12,7 +12,9 @@ src/lib/services/local/data/visits.json
 # AWS Blocks: generated clients, local mock data, and CDK output.
 /.bb-data/
 /.blocks-sandbox/
+/.cdk-blocks-sandbox/
+/.cdk-blocks/local/
 cdk.out/
-aws-blocks/client.js
-aws-blocks/blocks.spec.json
+cdk-blocks/client.js
+cdk-blocks/blocks.spec.json
 /.open-next/

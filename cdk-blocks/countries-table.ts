@@ -1,4 +1,4 @@
-import { DistributedTable, Scope } from "@aws-blocks/blocks";
+import { KVStore, Scope } from "aws-cdk-blocks";
 import { z } from "zod";
 import { ownerPartition } from "./pages-table";
 
@@ -16,7 +16,7 @@ import { ownerPartition } from "./pages-table";
  * received or stored at any point -- CloudFront resolves the country at the edge
  * and only the two-letter code reaches this code.
  *
- * One row per visit rather than a counter: DistributedTable exposes get/put/
+ * One row per visit rather than a counter: KVStore exposes get/put/
  * delete/query with no atomic increment, so a counter would be a
  * read-modify-write and two visits landing together would silently lose one.
  * Distinct keys cannot race, and counting happens at read time.
@@ -59,7 +59,7 @@ export function normalizeCountry(raw: string | null | undefined): string {
 }
 
 export function createCountriesTable(scope: Scope) {
-  return new DistributedTable(scope, "countries", {
+  return new KVStore(scope, "countries", {
     schema: countrySchema,
     key: { partitionKey: "pk", sortKey: "sk" },
     ttl: "expiresAt",
@@ -71,7 +71,7 @@ type CountriesTable = ReturnType<typeof createCountriesTable>;
 export function countryOperations(table: CountriesTable) {
   async function read(ownerId: string, pageSlug: string, from: string, to: string) {
     const rows: CountryRecord[] = [];
-    for await (const row of table.query({
+    for await (const { value: row } of table.query({
       where: {
         pk: { equals: ownerPartition(ownerId) },
         // Dates are zero-padded ISO, so lexicographic bounds are chronological.
@@ -89,9 +89,11 @@ export function countryOperations(table: CountriesTable) {
       const now = new Date();
       const date = now.toISOString().slice(0, 10);
       const id = crypto.randomUUID();
-      await table.put({
-        pk: ownerPartition(ownerId),
-        sk: rowKey(pageSlug, date, id),
+      const pk = ownerPartition(ownerId);
+      const sk = rowKey(pageSlug, date, id);
+      await table.put({ pk, sk }, {
+        pk,
+        sk,
         pageSlug,
         date,
         country: normalizeCountry(country),
@@ -121,9 +123,10 @@ export function countryOperations(table: CountriesTable) {
       if (fromSlug === toSlug) return 0;
       const rows = await read(ownerId, fromSlug, "0000-00-00", "9999-99-99");
       for (const row of rows) {
-        await table.put({
+        const sk = rowKey(toSlug, row.date, idFromKey(row.sk));
+        await table.put({ pk: row.pk, sk }, {
           ...row,
-          sk: rowKey(toSlug, row.date, idFromKey(row.sk)),
+          sk,
           pageSlug: toSlug,
         });
         await table.delete({ pk: row.pk, sk: row.sk });

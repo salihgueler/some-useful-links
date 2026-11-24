@@ -1,4 +1,4 @@
-import { DistributedTable, Scope } from "@aws-blocks/blocks";
+import { KVStore, Scope } from "aws-cdk-blocks";
 import { z } from "zod";
 
 /**
@@ -57,7 +57,7 @@ export const APP_STATS_PARTITION = "APP#STATS" as const;
 const rowKey = (date: string) => `D#${date}`;
 
 export function createAppStatsTable(scope: Scope) {
-  return new DistributedTable(scope, "appStats", {
+  return new KVStore(scope, "appStats", {
     schema: appStatsSchema,
     key: { partitionKey: "pk", sortKey: "sk" },
   });
@@ -75,9 +75,10 @@ export function appStatsOperations(table: AppStatsTable) {
      * counter would double-count on a redelivery.
      */
     async putDay(day: AppStatsDay) {
-      await table.put({
+      const sk = rowKey(day.date);
+      await table.put({ pk: APP_STATS_PARTITION, sk }, {
         pk: APP_STATS_PARTITION,
-        sk: rowKey(day.date),
+        sk,
         ...day,
       });
     },
@@ -93,7 +94,7 @@ export function appStatsOperations(table: AppStatsTable) {
       endDate = "9999-99-99",
     ): Promise<AppStatsDay[]> {
       const days: AppStatsDay[] = [];
-      for await (const row of table.query({
+      for await (const { value: row } of table.query({
         where: {
           pk: { equals: APP_STATS_PARTITION },
           sk: { between: [rowKey(startDate), rowKey(endDate)] },

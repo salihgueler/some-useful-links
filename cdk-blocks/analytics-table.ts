@@ -1,4 +1,4 @@
-import { DistributedTable, Scope } from "@aws-blocks/blocks";
+import { KVStore, Scope } from "aws-cdk-blocks";
 import { z } from "zod";
 import { ownerPartition } from "./pages-table";
 
@@ -36,7 +36,7 @@ export interface AnalyticsPoint {
 const rowKey = (pageSlug: string, date: string) => `A#${pageSlug}#${date}`;
 
 export function createAnalyticsTable(scope: Scope) {
-  return new DistributedTable(scope, "analytics", {
+  return new KVStore(scope, "analytics", {
     schema: analyticsSchema,
     key: { partitionKey: "pk", sortKey: "sk" },
   });
@@ -48,9 +48,11 @@ export function analyticsOperations(table: AnalyticsTable) {
   return {
     /** Insert or replace one day's aggregate for one of this owner's pages. */
     async upsertDaily(ownerId: string, pageSlug: string, point: AnalyticsPoint) {
-      await table.put({
-        pk: ownerPartition(ownerId),
-        sk: rowKey(pageSlug, point.date),
+      const pk = ownerPartition(ownerId);
+      const sk = rowKey(pageSlug, point.date);
+      await table.put({ pk, sk }, {
+        pk,
+        sk,
         pageSlug,
         date: point.date,
         views: point.views,
@@ -71,7 +73,7 @@ export function analyticsOperations(table: AnalyticsTable) {
       endDate = "9999-99-99",
     ): Promise<AnalyticsPoint[]> {
       const points: AnalyticsPoint[] = [];
-      for await (const row of table.query({
+      for await (const { value: row } of table.query({
         where: {
           pk: { equals: ownerPartition(ownerId) },
           sk: { between: [rowKey(pageSlug, startDate), rowKey(pageSlug, endDate)] },
